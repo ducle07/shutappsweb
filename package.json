@@ -1,0 +1,21 @@
+{
+  "name": "Controlling_Apps_in_Social_Contexts",
+  "version": "0.0.1",
+  "description": "Web-Umsetzung der App",
+  "main": "app.js",
+  "dependencies": {
+    "body-parser": "^1.17.2",
+    "express": "^4.15.3",
+    "mongoose": "^4.11.1",
+    "pug": "^2.0.0-rc.2",
+    "socket.io": "^2.0.3",
+    "uuid": "^3.1.0"
+  },
+  "start": "node app.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "node app.js"
+  },
+  "author": "Duc Giang Le",
+  "license": "ISC"
+}

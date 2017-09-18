@@ -1,0 +1,6 @@
+1. Client öffnet Website
+2. Client erstellt Session
+3. Client 1 lädt Client 2 in die Session ein
+4. Client 1 und Client 2 befinden sich in derselben Session
+5. Counter startet in dieser Session
+6. d.h. Client 1 und 2 sehen den gleichen Counter, Client 3 würde den Counter nicht sehen

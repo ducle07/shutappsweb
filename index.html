@@ -1,0 +1,106 @@
+<!doctype html>
+<html>
+    <head>
+      <title>Socket.IO</title>
+    </head>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+    <script src="js/qrious.js"></script>
+    <script>
+    $(function() {
+        var socket = io();
+        var sessionId = '';
+        var session = '';
+        var counter = 0;
+        
+        socket.on('connect', function () {
+            sessionId = socket.io.engine.id;
+            console.log('Connected ' + sessionId);    
+        });
+        
+        var createForm = $('#create');
+        var joinForm = $('#join');
+        var startForm = $('#start');
+        var stopForm = $('#stop');
+        
+        $(createForm).submit(function() {
+            event.preventDefault();
+            socket.emit('create', sessionId);
+        });
+        
+        $(joinForm).submit(function() {
+            event.preventDefault();
+            var roomId = $('#text').val();
+            socket.emit('join', roomId);
+            session = roomId;
+        });
+        
+        $(startForm).submit(function() {
+            event.preventDefault();
+            socket.emit('start', session);
+        });
+        
+        $(stopForm).submit(function() {
+            event.prevetnDefault();
+            clearTimeout(x);
+        });
+        
+        socket.on('roomId', function(roomId) {
+            $('#roomText').text(roomId);
+            var qr = new QRious({
+                element: document.getElementById('roomId'),
+                value: 'https://shutapps.com/' + roomId
+            });
+            session = roomId;
+            $('#roomHint').text("Bitte QR-Code zum Einladen benutzen!");
+        });
+        
+        socket.on('joinedRoom', function(joinedRoom) {
+            $('#joinedRoom').text(socket.io.engine.id + " joined " + joinedRoom); 
+        });
+        
+        socket.on('startCounter', function(data) {
+            if(data === 'startCounter' && counter == 0) {
+                counter = 1;
+                var hour = 0;
+                var minute = 0;
+                var second = 0;
+                var x = setInterval(function() {
+                    $('#counter').html((hour < 10 ? "0" : "") + hour + ":" + (minute < 10 ? "0" : "") + minute + ":" + (second < 10 ? "0" : "") + second)
+                    second+=1;
+
+                    if(second == 60) {
+                        second = 0;
+                        minute+=1;
+                    }
+
+                    if(minute == 60) {
+                        minute = 0;
+                        hour+=1;
+                    }
+                }, 1000);
+            }
+        });
+    });
+    </script>
+    <body>
+        <form id="create">
+            <input type="submit" value="create session">
+        </form>
+        <canvas id="roomId"></canvas>
+        <p id="roomHint"></p>
+        <p id="roomText"></p>
+        <form id="join">
+            <input type="text" id="text">
+            <input type="submit" value="join session">
+        </form>
+        <p id="joinedRoom"></p>
+        <form id="start">
+            <input type="submit" value="start session">
+        </form>
+        <p id="counter">00:00:00</p>
+        <form id="stop">
+            <input type="submit" value="stop session">
+        </form>
+    </body>
+</html>
