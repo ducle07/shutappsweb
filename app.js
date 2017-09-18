@@ -68,7 +68,7 @@ app.get('/send', function(req, res) {
 });
 
 //Port-Einstellungen
-//Der Server horcht auf den Port 3000.
-server.listen(3000, function() {
-    console.log('Server listens on Port 3000');
+//Der Server horcht auf den Port 8888.
+server.listen(process.env.PORT || 8888, function() {
+    console.log('Server listens on Port 8888');
 });
