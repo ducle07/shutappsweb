@@ -63,8 +63,8 @@ app.get('/', function(req, res) {
     res.sendFile(__dirname + '/index.html');
 });
 
-app.get('/send', function(req, res) {
-    
+app.get('/:roomid', function(req, res) {
+    res.send(req.params.roomid);
 });
 
 //Port-Einstellungen
