@@ -7,7 +7,7 @@ var app = express();
 var server = http.createServer(app);
 var io = require('socket.io')(server);
 
-mongoose.connect('mongodb://localhost:27017/ControllingApps');
+/*mongoose.connect('mongodb://localhost:27017/ControllingApps');
 
 var db = mongoose.connection;
 db.on('error', console.error.bind(console, 'connection error:'));
@@ -29,6 +29,7 @@ var userSchema = new Schema({
 
 var Session = mongoose.model('Session', sessionSchema);
 var User = mongoose.model('User', userSchema);
+*/
 
 app.use(express.static(__dirname + '/public'));
 app.use(bodyParser.json());
@@ -36,7 +37,7 @@ app.use(bodyParser.json());
 io.on('connection', function(socket) {
     //socket.emit('message', "Hello");
     
-    console.log(io.engine.clientsCount);
+    //console.log(io.engine.clientsCount);
     
     socket.on('create', function(room) {
         var roomId = 'room' + room;
