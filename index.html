@@ -49,7 +49,7 @@
             $('#roomText').text(roomId);
             var qr = new QRious({
                 element: document.getElementById('roomId'),
-                value: 'https://shutapps.com/' + roomId
+                value: 'https://shutappsweb.herokuapp.com/' + roomId
             });
             session = roomId;
             $('#roomHint').text("Bitte QR-Code zum Einladen benutzen!");

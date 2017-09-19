@@ -34,6 +34,8 @@ var User = mongoose.model('User', userSchema);
 app.use(express.static(__dirname + '/public'));
 app.use(bodyParser.json());
 
+app.set('socketio', io);
+
 io.on('connection', function(socket) {
     //socket.emit('message', "Hello");
     
@@ -45,10 +47,10 @@ io.on('connection', function(socket) {
         socket.emit('roomId', roomId);
     });
     
-    socket.on('join', function(roomId) {
+    /*socket.on('join', function(roomId) {
         socket.join(roomId);
         socket.emit('joinedRoom', roomId);
-    });
+    });*/
     
     socket.on('start', function(session) {
         //console.log(session);
@@ -64,7 +66,10 @@ app.get('/', function(req, res) {
 });
 
 app.get('/:roomid', function(req, res) {
-    res.send(req.params.roomid);
+    var io = req.app.get('socketio');
+    io.join(roomId);
+    io.emit('joinedRoom', roomId);
+    res.redirect('/');
 });
 
 //Port-Einstellungen
