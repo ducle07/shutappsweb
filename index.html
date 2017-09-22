@@ -12,6 +12,7 @@
         var sessionId = '';
         var session = '';
         var counter = 0;
+        var myTimer;
         
         socket.on('connect', function () {
             sessionId = socket.io.engine.id;
@@ -21,7 +22,7 @@
         var createForm = $('#create');
         var joinForm = $('#join');
         var startForm = $('#start');
-        var stopForm = $('#stop');
+        var pauseForm = $('#pause');
         
         $(createForm).submit(function() {
             event.preventDefault();
@@ -40,9 +41,9 @@
             socket.emit('start', session);
         });
         
-        $(stopForm).submit(function() {
-            event.prevetnDefault();
-            clearTimeout(x);
+        $(pauseForm).submit(function() {
+            event.preventDefault();
+            socket.emit('pause', session);
         });
         
         socket.on('roomId', function(roomId) {
@@ -60,28 +61,33 @@
         });
         
         socket.on('startCounter', function(data) {
-            if(data === 'startCounter' && counter == 0) {
-                counter = 1;
-                var hour = 0;
-                var minute = 0;
-                var second = 0;
-                var x = setInterval(function() {
-                    $('#counter').html((hour < 10 ? "0" : "") + hour + ":" + (minute < 10 ? "0" : "") + minute + ":" + (second < 10 ? "0" : "") + second)
-                    second+=1;
-
-                    if(second == 60) {
-                        second = 0;
-                        minute+=1;
-                    }
-
-                    if(minute == 60) {
-                        minute = 0;
-                        hour+=1;
-                    }
-                }, 1000);
+            if(data === 'startCounter') {
+                myTimer = setInterval(function() {
+                    document.getElementById("counter").innerHTML = formatTime(counter); 
+                    counter++;
+                }, 1000);        
             }
         });
-    });
+        
+        socket.on('pauseCounter', function(data) {
+            if(data === 'pauseCounter') {
+                clearInterval(myTimer);
+            }
+        });
+    }); 
+        
+    function formatTime(seconds) {
+        var h = Math.floor(seconds / 3600);
+        var m = Math.floor(seconds / 60) % 60;
+        var s = seconds % 60;
+        if(h < 10) 
+            h = "0" + h;
+        if(m < 10) 
+            m = "0" + m;
+        if(s < 10) 
+            s = "0" + s;
+        return h + ":" + m + ":" + s;
+    }
     </script>
     <body>
         <form id="create">
@@ -98,9 +104,9 @@
         <form id="start">
             <input type="submit" value="start session">
         </form>
-        <p id="counter">00:00:00</p>
-        <form id="stop">
-            <input type="submit" value="stop session">
+        <p id="counter"></p>
+        <form id="pause">
+            <input type="submit" value="pause session">
         </form>
     </body>
 </html>

@@ -47,15 +47,19 @@ io.on('connection', function(socket) {
         socket.emit('roomId', roomId);
     });
     
-    /*socket.on('join', function(roomId) {
+    socket.on('join', function(roomId) {
         socket.join(roomId);
         socket.emit('joinedRoom', roomId);
-    });*/
+    });
     
     socket.on('start', function(session) {
         //console.log(session);
         io.to(session).emit('startCounter', "startCounter");
         //console.log(io.sockets.adapter.rooms);
+    });
+    
+    socket.on('pause', function(session) {
+        io.to(session).emit('pauseCounter', "pauseCounter");
     });
 });
 
@@ -67,8 +71,8 @@ app.get('/', function(req, res) {
 
 app.get('/:roomid', function(req, res) {
     var io = req.app.get('socketio');
-    io.join(roomId);
-    io.emit('joinedRoom', roomId);
+    io.sockets.join(req.params.roomid);
+    io.emit('joinedRoom', req.params.roomid);
     res.redirect('/');
 });
 
