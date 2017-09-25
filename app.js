@@ -70,9 +70,6 @@ app.get('/', function(req, res) {
 });
 
 app.get('/:roomid', function(req, res) {
-    var io = req.app.get('socketio');
-    io.sockets.join(req.params.roomid);
-    io.emit('joinedRoom', req.params.roomid);
     res.redirect('/');
 });
 
