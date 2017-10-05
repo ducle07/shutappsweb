@@ -26,6 +26,7 @@
         var joinForm = $('#join');
         var startForm = $('#start');
         var pauseForm = $('#pause');
+        var leaveForm = $('#leave');
         
         $(createForm).submit(function() {
             event.preventDefault();
@@ -51,6 +52,15 @@
             noSleep.disable();
         });
         
+        $(leaveForm).submit(function() {
+            event.preventDefault();
+            socket.emit('leave', { id: sessionId, roomId: session })
+            $('ul').empty();
+            clearInterval(myTimer);
+            counter = 0;
+            document.getElementById("counter").innerHTML = formatTime(counter); 
+        });
+        
         socket.on('roomId', function(roomId) {
             $('#roomText').text(roomId);
             var qr = new QRious({
@@ -58,11 +68,23 @@
                 value: 'https://shutappsweb.herokuapp.com/' + roomId
             });
             session = roomId;
-            $('#roomHint').text("Bitte QR-Code zum Einladen benutzen!");
+            //$('#roomHint').text("Bitte QR-Code zum Einladen benutzen!");
         });
         
         socket.on('joinedRoom', function(joinedRoom) {
             $('#joinedRoom').text(socket.io.engine.id + " joined " + joinedRoom); 
+        });
+        
+        socket.on('clients', function(data) {
+            var seen = [];
+            $('#clients li').each(function(i, li) {
+                seen.push($(li).text());
+            });
+            data.forEach(function(element) {
+                if(jQuery.inArray(element, seen) == -1) {
+                    $('#clients').append("<li>" + element + "</li>");
+                }
+            });
         });
         
         socket.on('startCounter', function(data) {
@@ -78,6 +100,13 @@
             if(data === 'pauseCounter') {
                 clearInterval(myTimer);
             }
+        });
+        
+        socket.on('leave', function(client) {
+            // to do: client id aus der Liste löschen
+            $('li').filter(function() { 
+                return $.text([this]) === client; 
+            }).remove();
         });
     }); 
         
@@ -112,6 +141,11 @@
         <p id="counter"></p>
         <form id="pause">
             <input type="submit" value="pause session">
+        </form>
+        <p>Clients in der Session:</p>
+        <ul id="clients"></ul>
+        <form id="leave">
+            <input type="submit" value="leave session">
         </form>
     </body>
 </html>

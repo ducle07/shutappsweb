@@ -37,19 +37,28 @@ app.use(bodyParser.json());
 app.set('socketio', io);
 
 io.on('connection', function(socket) {
-    //socket.emit('message', "Hello");
-    
-    //console.log(io.engine.clientsCount);
     
     socket.on('create', function(room) {
         var roomId = 'room' + room;
         socket.join(roomId);
         socket.emit('roomId', roomId);
+        var clients = io.sockets.adapter.rooms[roomId].sockets;
+        var tempArray = [];
+        for(var key in clients) {
+            tempArray.push(key);
+        };
+        io.to(roomId).emit('clients', tempArray);
     });
     
     socket.on('join', function(roomId) {
         socket.join(roomId);
         socket.emit('joinedRoom', roomId);
+        var clients = io.sockets.adapter.rooms[roomId].sockets;
+        var tempArray = [];
+        for(var key in clients) {
+            tempArray.push(key);
+        };
+        io.to(roomId).emit('clients', tempArray);
     });
     
     socket.on('start', function(session) {
@@ -60,6 +69,13 @@ io.on('connection', function(socket) {
     
     socket.on('pause', function(session) {
         io.to(session).emit('pauseCounter', "pauseCounter");
+    });
+    
+    socket.on('leave', function(session) {
+        var clientId = session.id;
+        var roomId = session.roomId;
+        io.to(roomId).emit('leave', clientId);
+        socket.leave(roomId);
     });
 });
 
