@@ -16,6 +16,7 @@
         var myTimer;
         var noSleep = new NoSleep();
         var wakeLockEnabled = false;
+        var started = false;
         
         socket.on('connect', function () {
             sessionId = socket.io.engine.id;
@@ -31,6 +32,7 @@
         $(createForm).submit(function() {
             event.preventDefault();
             socket.emit('create', sessionId);
+            document.getElementById("counter").innerHTML = formatTime(counter); 
         });
         
         $(joinForm).submit(function() {
@@ -38,6 +40,7 @@
             var roomId = $('#text').val();
             socket.emit('join', roomId);
             session = roomId;
+            document.getElementById("counter").innerHTML = formatTime(counter); 
         });
         
         $(startForm).submit(function() {
@@ -54,18 +57,19 @@
         
         $(leaveForm).submit(function() {
             event.preventDefault();
-            socket.emit('leave', { id: sessionId, roomId: session })
+            socket.emit('leave', { id: sessionId, roomId: session})
             $('ul').empty();
             clearInterval(myTimer);
             counter = 0;
             document.getElementById("counter").innerHTML = formatTime(counter); 
+            $('#notify').empty();
         });
         
         socket.on('roomId', function(roomId) {
             $('#roomText').text(roomId);
             var qr = new QRious({
                 element: document.getElementById('roomId'),
-                value: 'https://shutappsweb.herokuapp.com/' + roomId
+                value: 'https://shutappsweb.herokuapp.com/?id=' + roomId
             });
             session = roomId;
             //$('#roomHint').text("Bitte QR-Code zum Einladen benutzen!");
@@ -88,10 +92,12 @@
         });
         
         socket.on('startCounter', function(data) {
-            if(data === 'startCounter') {
+            if(data === 'startCounter' && !started) {
+                started = true;
                 myTimer = setInterval(function() {
                     document.getElementById("counter").innerHTML = formatTime(counter); 
                     counter++;
+                    socket.emit('counter', counter);
                 }, 1000);        
             }
         });
@@ -99,14 +105,16 @@
         socket.on('pauseCounter', function(data) {
             if(data === 'pauseCounter') {
                 clearInterval(myTimer);
+                started = false;
             }
         });
         
-        socket.on('leave', function(client) {
-            // to do: client id aus der Liste löschen
+        socket.on('leave', function(data) {
             $('li').filter(function() { 
-                return $.text([this]) === client; 
+                return $.text([this]) === data.clientId; 
             }).remove();
+            $('#notify').append(data.clientId + " has left the session and lasts " + formatTime(data.counter) + "<br>");
+            started = false;
         });
     }); 
         
@@ -147,5 +155,6 @@
         <form id="leave">
             <input type="submit" value="leave session">
         </form>
+        <p id="notify"></p>
     </body>
 </html>

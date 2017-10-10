@@ -31,16 +31,21 @@ var Session = mongoose.model('Session', sessionSchema);
 var User = mongoose.model('User', userSchema);
 */
 
+var savedSockets;
+
 app.use(express.static(__dirname + '/public'));
 app.use(bodyParser.json());
 
-app.set('socketio', io);
-
 io.on('connection', function(socket) {
     
-    socket.on('create', function(room) {
-        var roomId = 'room' + room;
+    console.log('connected: ' + socket.id);
+    savedSockets = socket;
+    
+    socket.on('create', function(client) {
+        var roomId = 'room' + client;
+        socket.leave(client);
         socket.join(roomId);
+        socket.joinedRoom = roomId;
         socket.emit('roomId', roomId);
         var clients = io.sockets.adapter.rooms[roomId].sockets;
         var tempArray = [];
@@ -51,9 +56,14 @@ io.on('connection', function(socket) {
     });
     
     socket.on('join', function(roomId) {
+        var clientId = roomId.replace("room", "");
+        socket.leave(clientId);
+        
         socket.join(roomId);
+        socket.joinedRoom = roomId;
         socket.emit('joinedRoom', roomId);
         var clients = io.sockets.adapter.rooms[roomId].sockets;
+        //console.log(io.sockets.adapter.rooms);
         var tempArray = [];
         for(var key in clients) {
             tempArray.push(key);
@@ -67,6 +77,10 @@ io.on('connection', function(socket) {
         //console.log(io.sockets.adapter.rooms);
     });
     
+    socket.on('counter', function(counter) {
+        socket.counter = counter;
+    });
+    
     socket.on('pause', function(session) {
         io.to(session).emit('pauseCounter', "pauseCounter");
     });
@@ -74,20 +88,43 @@ io.on('connection', function(socket) {
     socket.on('leave', function(session) {
         var clientId = session.id;
         var roomId = session.roomId;
-        io.to(roomId).emit('leave', clientId);
-        socket.leave(roomId);
+        if(io.sockets.adapter.sids[socket.id][roomId]) {
+            socket.leave(roomId);
+            io.to(roomId).emit('leave', {clientId: clientId, counter: socket.counter});
+        }
+    });
+    
+    socket.on('disconnect', function() {
+        console.log('user disconnected ' + socket.joinedRoom + " " + socket.id);
+        io.to(socket.joinedRoom).emit('leave', {clientId: socket.id, counter: socket.counter});
+        socket.leave(socket.joinedRoom);
     });
 });
-
 
 
 app.get('/', function(req, res) {
     res.sendFile(__dirname + '/index.html');
 });
 
-app.get('/:roomid', function(req, res) {
+app.get('/join', function(req, res) {
+    console.log("vor: " + savedSockets.id);
     res.redirect('/');
+    console.log("nach: " + savedSockets.id);
 });
+
+/*app.get('/:roomid', function(req, res) {
+    console.log(savedSockets.id);
+    var roomId = req.params.roomid;
+    savedSockets.join(roomId);
+    savedSockets.emit('joinedRoom', roomId);
+    var clients = io.sockets.adapter.rooms[roomId].sockets;
+    var tempArray = [];
+    for(var key in clients) {
+        tempArray.push(key);
+    };
+    io.to(roomId).emit('clients', tempArray);
+    res.sendFile(__dirname + '/index.html');
+});*/
 
 //Port-Einstellungen
 //Der Server horcht auf den Port 8888.
