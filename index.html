@@ -7,6 +7,20 @@
     <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
     <script src="js/qrious.js"></script>
     <script src="js/NoSleep.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/4.5.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/4.5.0/firebase-auth.js"></script>
+    <script>
+        // Initialize Firebase
+        var config = {
+            apiKey: "AIzaSyBlPLppOtBkBo6XYq3wm17EGNOy8FhsUpM",
+            authDomain: "shutappsweb.firebaseapp.com",
+            databaseURL: "https://shutappsweb.firebaseio.com",
+            projectId: "shutappsweb",
+            storageBucket: "",
+            messagingSenderId: "336718505369"
+        };
+        firebase.initializeApp(config);
+    </script>        
     <script>
     $(function() {
         var socket = io();
@@ -20,7 +34,26 @@
         
         socket.on('connect', function () {
             sessionId = socket.io.engine.id;
-            console.log('Connected ' + sessionId);    
+            //console.log('Connected ' + sessionId);    
+        });
+        
+        firebase.auth().onAuthStateChanged(function(user) {
+            if(user) {
+                console.log('user is logged in');
+                firebase.auth().currentUser.getIdToken(true).then(function(idToken) {
+                    var data = {
+                        idToken: idToken
+                    };
+                    socket.emit('auth', data);
+                }).catch(function(error) {
+                    console.log(error);
+                });
+            } else {
+                console.log('user is not logged in');
+                alert('Sie sind nicht eingeloggt!');
+                window.stop();
+                window.location.replace('/');
+            }
         });
         
         var createForm = $('#create');
@@ -32,6 +65,7 @@
         $(createForm).submit(function() {
             event.preventDefault();
             socket.emit('create', sessionId);
+            console.log(sessionId);
             document.getElementById("counter").innerHTML = formatTime(counter); 
         });
         
@@ -69,13 +103,15 @@
             $('#roomText').text(roomId);
             var qr = new QRious({
                 element: document.getElementById('roomId'),
-                value: 'https://shutappsweb.herokuapp.com/?id=' + roomId
+                value: 'https://shutappsweb.herokuapp.com/start/' + roomId
             });
             session = roomId;
             //$('#roomHint').text("Bitte QR-Code zum Einladen benutzen!");
         });
         
         socket.on('joinedRoom', function(joinedRoom) {
+            session = joinedRoom;
+            document.getElementById("counter").innerHTML = formatTime(counter); 
             $('#joinedRoom').text(socket.io.engine.id + " joined " + joinedRoom); 
         });
         
@@ -95,9 +131,9 @@
             if(data === 'startCounter' && !started) {
                 started = true;
                 myTimer = setInterval(function() {
+                    socket.emit('counter', counter);
                     document.getElementById("counter").innerHTML = formatTime(counter); 
                     counter++;
-                    socket.emit('counter', counter);
                 }, 1000);        
             }
         });
@@ -113,7 +149,11 @@
             $('li').filter(function() { 
                 return $.text([this]) === data.clientId; 
             }).remove();
-            $('#notify').append(data.clientId + " has left the session and lasts " + formatTime(data.counter) + "<br>");
+            if(counter == 0) {
+                $('#notify').append(data.clientId + " has left the session and lasts " + formatTime(0) + "<br>");
+            } else {
+                $('#notify').append(data.clientId + " has left the session and lasts " + formatTime(data.counter) + "<br>");
+            }
             started = false;
         });
     }); 
@@ -130,6 +170,18 @@
             s = "0" + s;
         return h + ":" + m + ":" + s;
     }
+        
+    function signOut() {
+        firebase.auth().signOut().then(function() {
+            console.log('user has logged out');
+        }).catch(function(error) {
+            console.log(error);
+        });
+    };
+        
+    window.onload = function() {
+        document.getElementById('sign-out').addEventListener('click', signOut, false);
+    };
     </script>
     <body>
         <form id="create">
@@ -156,5 +208,6 @@
             <input type="submit" value="leave session">
         </form>
         <p id="notify"></p>
+        <button id="sign-out" name="sign-out">Sign Out</button>
     </body>
 </html>
