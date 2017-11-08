@@ -46,8 +46,13 @@ var userSchema = new Schema({
     toJoinedRoom: String
 });
 
+var socketSchema = new Schema({
+    id: String
+});
+
 //var Session = mongoose.model('Session', sessionSchema);
 var User = mongoose.model('User', userSchema);
+var Socket = mongoose.model('Socket', socketSchema);
 
 app.use(express.static(__dirname + '/public'));
 app.use(bodyParser.json());
@@ -78,120 +83,144 @@ var users = {};
 io.on('connection', function(socket) {
     
     console.log('connected: ' + socket.id);
-    
-    socket.on('auth', function(data) {
-        var idToken = data.idToken;
-        admin.auth().verifyIdToken(idToken)
-            .then(function(decodedToken) {
-            var uid = decodedToken.uid;
-            //console.log(decodedToken);
-            
-            var array = [];
-            array.push(socket.id);
-            users.id = decodedToken.uid;
-            users.name = decodedToken.email;
-            users.connections = array;
-            users.toJoinedRoom = "";
-            
-            socket.handshake.session.uid = decodedToken.uid;
-            socket.handshake.session.save();
-            
-            var userProfile = new User(users);
-            User.findOne( { id: decodedToken.uid }, function(err, user) {
-                if(!user) {
-                    userProfile.save(function(err) {
-                        if(err)
-                            console.log(err);
-                        else
-                            console.log('User hinzugefügt');
-                    });
-                    console.log('save');
-                } else {
-                    console.log(user.toJoinedRoom);
-                    if(user.toJoinedRoom !== "") {
-                        socket.join(user.toJoinedRoom);
-                        //socket.emit('joinedRoom', user.toJoinedRoom);
-                        io.to(user.toJoinedRoom).emit('joinedRoom', user.toJoinedRoom);
-                        var clients = io.sockets.adapter.rooms[user.toJoinedRoom].sockets;
-                        var tempArray = [];
-                        for(var key in clients) {
-                            tempArray.push(key);
-                        };
-                        io.to(user.toJoinedRoom).emit('clients', tempArray);
-                        User.findOneAndUpdate( {id: decodedToken.uid}, {$set: {toJoinedRoom: ""}}, function(err, user) {
-                            if(err) {
-                                console.log(err);
-                            } else {
-                                console.log(user);
-                            }
-                        });
-                    }
-                }
-            });
-        }).catch(function(error) {
-            console.log(error);
-        });
-    });
-    
-    socket.on('create', function(client) {
-        var roomId = 'room' + client;
-        socket.leave(client);
-        socket.join(roomId);
-        socket.joinedRoom = roomId;
-        socket.emit('roomId', roomId);
-        var clients = io.sockets.adapter.rooms[roomId].sockets;
-        var tempArray = [];
-        for(var key in clients) {
-            tempArray.push(key);
-        };
-        io.to(roomId).emit('clients', tempArray);
-    });
-    
-    socket.on('join', function(roomId) {
-        var clientId = roomId.replace("room", "");
-        socket.leave(clientId);
-        
-        socket.join(roomId);
-        socket.joinedRoom = roomId;
-        //socket.emit('joinedRoom', roomId);
-        var clients = io.sockets.adapter.rooms[roomId].sockets;
-        //console.log(io.sockets.adapter.rooms);
-        var tempArray = [];
-        for(var key in clients) {
-            tempArray.push(key);
-        };
-        io.to(roomId).emit('clients', tempArray);
-    });
-    
-    socket.on('start', function(session) {
-        //console.log(session);
-        io.to(session).emit('startCounter', "startCounter");
-        //console.log(io.sockets.adapter.rooms);
-    });
-    
-    socket.on('counter', function(counter) {
-        console.log(counter);
-        socket.counter = counter;
-    });
-    
-    socket.on('pause', function(session) {
-        io.to(session).emit('pauseCounter', "pauseCounter");
-    });
-    
-    socket.on('leave', function(session) {
-        var clientId = session.id;
-        var roomId = session.roomId;
-        if(io.sockets.adapter.sids[socket.id][roomId]) {
-            socket.leave(roomId);
-            io.to(roomId).emit('leave', {clientId: clientId, counter: socket.counter});
+    var data = {
+        id: socket.id
+    };
+    var saveSocket = new Socket(data);
+    saveSocket.save(function(err) {
+        if(err) {
+            console.log(err);
+        } else {
+            console.log(socket.id + " wurde gespeichert");
         }
     });
     
-    socket.on('disconnect', function() {
-        console.log('user disconnected ' + socket.joinedRoom + " " + socket.id);
-        io.to(socket.joinedRoom).emit('leave', {clientId: socket.id, counter: socket.counter});
-        socket.leave(socket.joinedRoom);
-    });
+    /*socket.on('connect', function() {
+        callListeners();
+    });*/
+    
+    callListeners();
+    console.log(socket.eventNames());
+    
+    function callListeners() {
+        socket.on('auth', function(data) {
+            var idToken = data.idToken;
+            admin.auth().verifyIdToken(idToken)
+                .then(function(decodedToken) {
+                var uid = decodedToken.uid;
+                //console.log(decodedToken);
+
+                var array = [];
+                array.push(socket.id);
+                users.id = decodedToken.uid;
+                users.name = decodedToken.email;
+                users.connections = array;
+                users.toJoinedRoom = "";
+
+                socket.handshake.session.uid = decodedToken.uid;
+                socket.handshake.session.save();
+
+                var userProfile = new User(users);
+                User.findOne( { id: decodedToken.uid }, function(err, user) {
+                    if(!user) {
+                        userProfile.save(function(err) {
+                            if(err)
+                                console.log(err);
+                            else
+                                console.log('User hinzugefügt');
+                        });
+                        console.log('save');
+                    } else {
+                        console.log(user.toJoinedRoom);
+                        if(user.toJoinedRoom !== "") {
+                            socket.join(user.toJoinedRoom);
+                            //socket.emit('joinedRoom', user.toJoinedRoom);
+                            io.to(user.toJoinedRoom).emit('joinedRoom', user.toJoinedRoom);
+                            var clients = io.sockets.adapter.rooms[user.toJoinedRoom].sockets;
+                            var tempArray = [];
+                            for(var key in clients) {
+                                tempArray.push(key);
+                            };
+                            io.to(user.toJoinedRoom).emit('clients', tempArray);
+                            User.findOneAndUpdate( {id: decodedToken.uid}, {$set: {toJoinedRoom: ""}}, function(err, user) {
+                                if(err) {
+                                    console.log(err);
+                                } else {
+                                    console.log(user);
+                                }
+                            });
+                        }
+                    }
+                });
+            }).catch(function(error) {
+                console.log(error);
+            });
+        });
+
+        socket.on('create', function(client) {
+            var roomId = 'room' + client;
+            socket.leave(client);
+            socket.join(roomId);
+            socket.joinedRoom = roomId;
+            socket.emit('roomId', roomId);
+            var clients = io.sockets.adapter.rooms[roomId].sockets;
+            var tempArray = [];
+            for(var key in clients) {
+                tempArray.push(key);
+            };
+            io.to(roomId).emit('clients', tempArray);
+        });
+
+        socket.on('join', function(roomId) {
+            var clientId = roomId.replace("room", "");
+            socket.leave(clientId);
+
+            socket.join(roomId);
+            socket.joinedRoom = roomId;
+            //socket.emit('joinedRoom', roomId);
+            var clients = io.sockets.adapter.rooms[roomId].sockets;
+            //console.log(io.sockets.adapter.rooms);
+            var tempArray = [];
+            for(var key in clients) {
+                tempArray.push(key);
+            };
+            io.to(roomId).emit('clients', tempArray);
+        });
+
+        socket.on('start', function(session) {
+            //console.log(session);
+            io.to(session).emit('startCounter', "startCounter");
+            //console.log(io.sockets.adapter.rooms);
+        });
+
+        socket.on('counter', function(counter) {
+            console.log(counter);
+            socket.counter = counter;
+        });
+
+        socket.on('pause', function(session) {
+            io.to(session).emit('pauseCounter', "pauseCounter");
+        });
+
+        socket.on('leave', function(session) {
+            var clientId = session.id;
+            var roomId = session.roomId;
+            if(io.sockets.adapter.sids[socket.id][roomId]) {
+                socket.leave(roomId);
+                io.to(roomId).emit('leave', {clientId: clientId, counter: socket.counter});
+            }
+        });
+
+        socket.on('disconnect', function() {
+            Socket.findOneAndRemove( {id: socket.id}, function(err, socket) {
+
+            });
+            console.log('user disconnected ' + socket.joinedRoom + " " + socket.id);
+            io.to(socket.joinedRoom).emit('leave', {clientId: socket.id, counter: socket.counter});
+            socket.leave(socket.joinedRoom);
+            socket.emit('left', 'left');
+        });
+    }
 });
 
 
@@ -206,11 +235,19 @@ app.get('/start', function(req, res) {
 
 app.get('/start/:roomid', function(req, res) {
     if(req.params.roomid !== undefined) {
-        User.findOneAndUpdate( {id: req.session.uid}, {$set: {toJoinedRoom: req.params.roomid}}, function(err, user) {
-            if(err) {
-                console.log(err);
+        var toCheckedId = req.params.roomid.replace("room", "");
+        Socket.findOne( {id: toCheckedId}, function(err, socket) {
+            if(socket) {
+                console.log('verified');
+                User.findOneAndUpdate( {id: req.session.uid}, {$set: {toJoinedRoom: req.params.roomid}}, function(err, user) {
+                    if(err) {
+                        console.log(err);
+                    } else {
+                        console.log(user);
+                    }
+                });
             } else {
-                console.log(user);
+                console.log('fake');
             }
         });
     }

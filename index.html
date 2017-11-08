@@ -7,6 +7,7 @@
     <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
     <script src="js/qrious.js"></script>
     <script src="js/NoSleep.js"></script>
+    <script src="js/ifvisible.js"></script>
     <script src="https://www.gstatic.com/firebasejs/4.5.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/4.5.0/firebase-auth.js"></script>
     <script>
@@ -56,6 +57,20 @@
             }
         });
         
+        document.addEventListener('visibilitychange', function(e) {
+            if(document.hidden) {
+                socket.io.disconnect();
+                clearInterval(myTimer);
+                counter = 0;
+                document.getElementById("counter").innerHTML = formatTime(counter); 
+                $('#clients').empty();
+                console.log('tab');
+            } else {
+                socket.io.connect();
+                console.log('kein tab');
+            }
+        });
+        
         var createForm = $('#create');
         var joinForm = $('#join');
         var startForm = $('#start');
@@ -96,7 +111,7 @@
             clearInterval(myTimer);
             counter = 0;
             document.getElementById("counter").innerHTML = formatTime(counter); 
-            $('#notify').empty();
+            $('li').remove();
         });
         
         socket.on('roomId', function(roomId) {
@@ -155,6 +170,13 @@
                 $('#notify').append(data.clientId + " has left the session and lasts " + formatTime(data.counter) + "<br>");
             }
             started = false;
+        });
+        
+        socket.on('left', function(data) {
+            console.log(data);
+            if(data == 'left') {
+                alert('Du hast ' + counter + ' ausgehalten!');
+            }
         });
     }); 
         
