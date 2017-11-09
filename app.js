@@ -135,6 +135,7 @@ io.on('connection', function(socket) {
                     //console.log(user.toJoinedRoom);
                     if(user.toJoinedRoom !== "") {
                         socket.join(user.toJoinedRoom);
+                        socket.joinedRoom = user.toJoinedRoom;
                         //socket.emit('joinedRoom', user.toJoinedRoom);
                         io.to(user.toJoinedRoom).emit('joinedRoom', user.toJoinedRoom);
                         var clients = io.sockets.adapter.rooms[user.toJoinedRoom].sockets;
@@ -242,8 +243,6 @@ app.get('/start/:roomid', function(req, res) {
         Socket.findOne( {id: toCheckedId}, function(err, socket) {
             if(socket) {
                 console.log('verified');
-                //Problem: zwischendurch null
-                //die antwort vom disconnect event wird nicht durchgeführt
                 console.log(req.session.uid);
                 User.findOneAndUpdate( {id: req.session.uid}, {$set: {toJoinedRoom: req.params.roomid}}, function(err, user) {
                     if(err) {
