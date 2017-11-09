@@ -213,9 +213,12 @@ io.on('connection', function(socket) {
 
         socket.on('disconnect', function() {
             Socket.findOneAndRemove( {id: socket.id}, function(err, socket) {
-
+                if(err) {
+                    console.log(err);
+                }
             });
             console.log('user disconnected ' + socket.joinedRoom + " " + socket.id);
+            console.log(socket.joinedRoom);
             io.to(socket.joinedRoom).emit('leave', {clientId: socket.id, counter: socket.counter});
             socket.leave(socket.joinedRoom);
             socket.emit('left', 'left');
@@ -239,6 +242,9 @@ app.get('/start/:roomid', function(req, res) {
         Socket.findOne( {id: toCheckedId}, function(err, socket) {
             if(socket) {
                 console.log('verified');
+                //Problem: zwischendurch null
+                //die antwort vom disconnect event wird nicht durchgeführt
+                console.log(req.session.uid);
                 User.findOneAndUpdate( {id: req.session.uid}, {$set: {toJoinedRoom: req.params.roomid}}, function(err, user) {
                     if(err) {
                         console.log(err);

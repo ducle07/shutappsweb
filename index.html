@@ -64,6 +64,7 @@
                 counter = 0;
                 document.getElementById("counter").innerHTML = formatTime(counter); 
                 $('#clients').empty();
+                noSleep.disable();
                 console.log('tab');
             } else {
                 socket.io.connect();
@@ -110,6 +111,7 @@
             counter = 0;
             document.getElementById("counter").innerHTML = formatTime(counter); 
             $('li').remove();
+            noSleep.disable();
         });
         
         socket.on('roomId', function(roomId) {
@@ -169,7 +171,6 @@
                 $('#notify').append(data.clientId + " has left the session and lasts " + formatTime(data.counter) + "<br>");
             }
             started = false;
-            noSleep.disable();
         });
         
         socket.on('left', function(data) {
