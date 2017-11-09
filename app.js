@@ -100,7 +100,7 @@ io.on('connection', function(socket) {
     });*/
     
     callListeners();
-    console.log(socket.eventNames());
+    //console.log(socket.eventNames());
     
     function callListeners() {
         socket.on('auth', function(data) {
@@ -130,26 +130,26 @@ io.on('connection', function(socket) {
                                 console.log('User hinzugefügt');
                         });
                         console.log('save');
-                    } else {
-                        console.log(user.toJoinedRoom);
-                        if(user.toJoinedRoom !== "") {
-                            socket.join(user.toJoinedRoom);
-                            //socket.emit('joinedRoom', user.toJoinedRoom);
-                            io.to(user.toJoinedRoom).emit('joinedRoom', user.toJoinedRoom);
-                            var clients = io.sockets.adapter.rooms[user.toJoinedRoom].sockets;
-                            var tempArray = [];
-                            for(var key in clients) {
-                                tempArray.push(key);
-                            };
-                            io.to(user.toJoinedRoom).emit('clients', tempArray);
-                            User.findOneAndUpdate( {id: decodedToken.uid}, {$set: {toJoinedRoom: ""}}, function(err, user) {
-                                if(err) {
-                                    console.log(err);
-                                } else {
-                                    console.log(user);
-                                }
-                            });
-                        }
+                    } 
+                    
+                    //console.log(user.toJoinedRoom);
+                    if(user.toJoinedRoom !== "") {
+                        socket.join(user.toJoinedRoom);
+                        //socket.emit('joinedRoom', user.toJoinedRoom);
+                        io.to(user.toJoinedRoom).emit('joinedRoom', user.toJoinedRoom);
+                        var clients = io.sockets.adapter.rooms[user.toJoinedRoom].sockets;
+                        var tempArray = [];
+                        for(var key in clients) {
+                            tempArray.push(key);
+                        };  
+                        io.to(user.toJoinedRoom).emit('clients', tempArray);
+                        User.findOneAndUpdate( {id: decodedToken.uid}, {$set: {toJoinedRoom: ""}}, function(err, user) {
+                            if(err) {
+                                console.log(err);
+                            } else {
+                                console.log(user);
+                            }
+                        });
                     }
                 });
             }).catch(function(error) {

@@ -95,13 +95,11 @@
         $(startForm).submit(function() {
             event.preventDefault();
             socket.emit('start', session);
-            noSleep.enable();
         });
         
         $(pauseForm).submit(function() {
             event.preventDefault();
             socket.emit('pause', session);
-            noSleep.disable();
         });
         
         $(leaveForm).submit(function() {
@@ -145,6 +143,7 @@
         socket.on('startCounter', function(data) {
             if(data === 'startCounter' && !started) {
                 started = true;
+                noSleep.enable();
                 myTimer = setInterval(function() {
                     socket.emit('counter', counter);
                     document.getElementById("counter").innerHTML = formatTime(counter); 
@@ -170,6 +169,7 @@
                 $('#notify').append(data.clientId + " has left the session and lasts " + formatTime(data.counter) + "<br>");
             }
             started = false;
+            noSleep.disable();
         });
         
         socket.on('left', function(data) {
