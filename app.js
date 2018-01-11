@@ -329,7 +329,9 @@ io.on('connection', function(socket) {
                 if(err) {
                 
                 } else {
-                    io.to(socket.joinedRoom).emit('leave', {clientId: user.name, counter: socket.counter});
+                    if(user) {
+                        io.to(socket.joinedRoom).emit('leave', {clientId: user.name, counter: socket.counter});
+                    }
                 }
             });
             socket.leave(socket.joinedRoom);
