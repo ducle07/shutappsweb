@@ -150,11 +150,15 @@ io.on('connection', function(socket) {
                             //socket.emit('joinedRoom', user.toJoinedRoom);
                             io.to(user.toJoinedRoom).emit('joinedRoom', user.toJoinedRoom);
                             var clients = io.sockets.adapter.rooms[user.toJoinedRoom].sockets;
-                            var tempArray = [];
                             for(var key in clients) {
-                                tempArray.push(key);
-                            };  
-                            io.to(user.toJoinedRoom).emit('clients', tempArray);
+                                User.findOne( {connection: key}, function(err, userdata) {
+                                    if(err) {
+
+                                    } else {
+                                        io.to(user.toJoinedRoom).emit('clients', userdata.name);
+                                    }    
+                                });
+                            };
                             User.findOneAndUpdate( {id: decodedToken.uid}, {$set: {toJoinedRoom: ""}}, function(err, user) {
                                 if(err) {
                                     console.log(err);
