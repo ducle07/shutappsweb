@@ -155,7 +155,7 @@ io.on('connection', function(socket) {
                                         
                                 } else {
                                     User.findOne( {connection: user.toJoinedRoom.replace("room", "")}, function(err, owner) {
-                                        io.to(user.toJoinedRoom).emit('clients', owner.name);
+                                        socket.emit('clients', owner.name);
                                         io.to(user.toJoinedRoom).emit('clients', userdata.name);
                                     });
                                 }    

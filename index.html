@@ -169,7 +169,7 @@
             socket.on('joinedRoom', function(joinedRoom) {
                 session = joinedRoom;
                 document.getElementById("counter").innerHTML = formatTime(counter); 
-                $('#joinedRoom').text(socket.io.engine.id + " joined " + joinedRoom); 
+                //$('#joinedRoom').text(socket.io.engine.id + " joined " + joinedRoom); 
             });
 
             socket.on('clients', function(data) {
@@ -203,9 +203,9 @@
                     return $.text([this]) === data.clientId; 
                 }).remove();
                 if(counter == 0) {
-                    $('#notify').append(data.clientId + " has left the session and lasts " + formatTime(0) + "<br>");
+                    //$('#notify').append(data.clientId + " has left the session and lasts " + formatTime(0) + "<br>");
                 } else {
-                    $('#notify').append(data.clientId + " has left the session and lasts " + formatTime(data.counter) + "<br>");
+                    //$('#notify').append(data.clientId + " has left the session and lasts " + formatTime(data.counter) + "<br>");
                 }
                 started = false;
             });
