@@ -371,7 +371,7 @@ app.get('/main/:roomid', function(req, res) {
             }
         });
     }
-    res.redirect('/start');
+    res.redirect('/main');
 });
 
 //Port-Einstellungen
