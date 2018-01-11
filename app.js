@@ -152,9 +152,12 @@ io.on('connection', function(socket) {
                             var clients = io.sockets.adapter.rooms[user.toJoinedRoom].sockets;
                             User.findOne( {connection: socket.id}, function(err, userdata) {
                                 if(err) {
-
+                                        
                                 } else {
-                                    io.to(user.toJoinedRoom).emit('clients', userdata.name);
+                                    User.findOne( {connection: user.toJoinedRoom.replace("room", "")}, function(err, owner) {
+                                        io.to(user.toJoinedRoom).emit('clients', owner.name);
+                                        io.to(user.toJoinedRoom).emit('clients', userdata.name);
+                                    });
                                 }    
                             });
                             User.findOneAndUpdate( {id: decodedToken.uid}, {$set: {toJoinedRoom: ""}}, function(err, user) {
