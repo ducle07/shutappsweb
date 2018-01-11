@@ -150,15 +150,13 @@ io.on('connection', function(socket) {
                             //socket.emit('joinedRoom', user.toJoinedRoom);
                             io.to(user.toJoinedRoom).emit('joinedRoom', user.toJoinedRoom);
                             var clients = io.sockets.adapter.rooms[user.toJoinedRoom].sockets;
-                            for(var key in clients) {
-                                User.findOne( {connection: key}, function(err, userdata) {
-                                    if(err) {
+                            User.findOne( {connection: socket.id}, function(err, userdata) {
+                                if(err) {
 
-                                    } else {
-                                        io.to(user.toJoinedRoom).emit('clients', userdata.name);
-                                    }    
-                                });
-                            };
+                                } else {
+                                    io.to(user.toJoinedRoom).emit('clients', userdata.name);
+                                }    
+                            });
                             User.findOneAndUpdate( {id: decodedToken.uid}, {$set: {toJoinedRoom: ""}}, function(err, user) {
                                 if(err) {
                                     console.log(err);
@@ -324,7 +322,13 @@ io.on('connection', function(socket) {
             });
             console.log('user disconnected ' + socket.joinedRoom + " " + socket.id);
             console.log(socket.joinedRoom);
-            io.to(socket.joinedRoom).emit('leave', {clientId: socket.id, counter: socket.counter});
+            User.findOne( {connection: socket.id}, function(err, user) {
+                if(err) {
+                
+                } else {
+                    io.to(socket.joinedRoom).emit('leave', {clientId: user.name, counter: socket.counter});
+                }
+            });
             socket.leave(socket.joinedRoom);
             socket.emit('left', socket.counter);
         });
