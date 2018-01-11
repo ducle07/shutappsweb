@@ -1,0 +1,242 @@
+<html>
+    <head>
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
+        <link rel="stylesheet" type="text/css" href="../css/login.css">
+        
+        <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/4.5.0/firebase-app.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/4.5.0/firebase-auth.js"></script>
+        <script>
+            // Initialize Firebase
+            var config = {
+                apiKey: "AIzaSyBlPLppOtBkBo6XYq3wm17EGNOy8FhsUpM",
+                authDomain: "shutappsweb.firebaseapp.com",
+                databaseURL: "https://shutappsweb.firebaseio.com",
+                projectId: "shutappsweb",
+                storageBucket: "",
+                messagingSenderId: "336718505369"
+            };
+            firebase.initializeApp(config);
+        </script>
+
+        <script>
+            function handleSignUp() {
+              var email = document.getElementById('email').value;
+              var password = document.getElementById('password').value;
+              if (email.length < 4) {
+                alert('Please enter an email address.');
+                return;
+              }
+              if (password.length < 4) {
+                alert('Please enter a password.');
+                return;
+              }
+              // Sign in with email and pass.
+              // [START createwithemail]
+              firebase.auth().createUserWithEmailAndPassword(email, password).catch(function(error) {
+                // Handle Errors here.
+                var errorCode = error.code;
+                var errorMessage = error.message;
+                // [START_EXCLUDE]
+                if (errorCode == 'auth/weak-password') {
+                  alert('The password is too weak.');
+                } else {
+                  alert(errorMessage);
+                }
+                console.log(error);
+                // [END_EXCLUDE]
+              });
+              // [END createwithemail]
+            }
+            
+            function toggleSignIn() {
+              if (firebase.auth().currentUser) {
+                // [START signout]
+                firebase.auth().signOut();
+                // [END signout]
+              } else {
+                var email = document.getElementById('email').value;
+                var password = document.getElementById('password').value;
+                if (email.length < 4) {
+                  alert('Please enter an email address.');
+                  return;
+                }
+                if (password.length < 4) {
+                  alert('Please enter a password.');
+                  return;
+                }
+                // Sign in with email and pass.
+                // [START authwithemail]
+                firebase.auth().signInWithEmailAndPassword(email, password).catch(function(error) {
+                  // Handle Errors here.
+                  var errorCode = error.code;
+                  var errorMessage = error.message;
+                  // [START_EXCLUDE]
+                  if (errorCode === 'auth/wrong-password') {
+                    alert('Wrong password.');
+                  } else {
+                    alert(errorMessage);
+                  }
+                  console.log(error);
+                  // [END_EXCLUDE]
+                });
+                // [END authwithemail]
+              }
+            }
+            
+            function signOut() {
+                firebase.auth().signOut().then(function() {
+                    console.log('user logged out');
+                }, function(error) {
+                    console.log(error);
+                });
+            }
+            
+            function checkLoginState(event) {
+              if (event.authResponse) {
+                // User is signed-in Facebook.
+                var unsubscribe = firebase.auth().onAuthStateChanged(function(firebaseUser) {
+                  unsubscribe();
+                  // Check if we are already signed-in Firebase with the correct user.
+                  if (!isUserEqual(event.authResponse, firebaseUser)) {
+                    // Build Firebase credential with the Facebook auth token.
+                    var credential = firebase.auth.FacebookAuthProvider.credential(
+                        event.authResponse.accessToken);
+                    // Sign in with the credential from the Facebook user.
+                    firebase.auth().signInWithCredential(credential).catch(function(error) {
+                      // Handle Errors here.
+                      var errorCode = error.code;
+                      var errorMessage = error.message;
+                      // The email of the user's account used.
+                      var email = error.email;
+                      // The firebase.auth.AuthCredential type that was used.
+                      var credential = error.credential;
+                      // ...
+                    });
+                  } else {
+                    // User is already signed-in Firebase with the correct user.
+                  }
+                });
+              } else {
+                // User is signed-out of Facebook.
+                firebase.auth().signOut();
+              }
+            }
+            
+            function isUserEqual(facebookAuthResponse, firebaseUser) {
+              if (firebaseUser) {
+                var providerData = firebaseUser.providerData;
+                console.log(providerData);
+                for (var i = 0; i < providerData.length; i++) {
+                  if (providerData[i].providerId === firebase.auth.FacebookAuthProvider.PROVIDER_ID &&
+                      providerData[i].uid === facebookAuthResponse.userID) {
+                    // We don't need to re-auth the Firebase connection.
+                    return true;
+                  }
+                }
+              }
+              return false;
+            }
+            
+            window.onload = function() {
+                
+                firebase.auth().onAuthStateChanged(function(user) {
+                    if(user) {
+                        console.log('logged in');
+                        /*firebase.auth().currentUser.getIdToken(true).then(function(idToken) {
+                            console.log(idToken);
+                            var data = {
+                                idToken: idToken
+                            };
+                            $.ajax({
+                                type: 'POST',
+                                url: '/verify',
+                                data: JSON.stringify(data),
+                                contentType: 'application/json'
+                            }).done(function(response, status, header) {
+                                console.log('idToken gesendet');
+                            }).fail(function(error) {
+                                console.log('idToken konnte nicht gesendet werden');
+                            });
+                        }).catch(function(error) {
+                            console.log(error);
+                        });*/
+                        window.location.replace('/main');
+                    } else {     
+                        document.getElementById('sign-up').addEventListener('click', handleSignUp, false);
+                        document.getElementById('sign-in').addEventListener('click', toggleSignIn, false);
+                    }
+                });
+                FB.Event.subscribe('auth.authResponseChange', checkLoginState);
+            };   
+        </script>
+    </head>
+    <body>
+        <div id="fb-root"></div>
+        <script>
+          window.fbAsyncInit = function() {
+            FB.init({
+              appId      : '1178256845650984',
+              cookie     : true,
+              xfbml      : true,
+              version    : 'v2.11'
+            });
+
+            FB.AppEvents.logPageView();   
+
+          };
+
+          (function(d, s, id){
+             var js, fjs = d.getElementsByTagName(s)[0];
+             if (d.getElementById(id)) {return;}
+             js = d.createElement(s); js.id = id;
+             js.src = "https://connect.facebook.net/en_US/sdk.js";
+             fjs.parentNode.insertBefore(js, fjs);
+           }(document, 'script', 'facebook-jssdk'));
+        </script>
+        
+        <script>(function(d, s, id) {
+          var js, fjs = d.getElementsByTagName(s)[0];
+          if (d.getElementById(id)) return;
+          js = d.createElement(s); js.id = id;
+          js.src = 'https://connect.facebook.net/de_DE/sdk.js#xfbml=1&version=v2.11&appId=1178256845650984';
+          fjs.parentNode.insertBefore(js, fjs);
+        }(document, 'script', 'facebook-jssdk'));
+        </script>
+        
+        <div class="container">    
+
+            <div class="omb_login">
+                <h3 class="omb_authTitle">Login or Sign up for ShutAppsWeb</h3>
+                <div class="omb_central">
+                    <div class="fb-login-button" data-max-rows="1" data-size="large" data-button-type="login_with" data-show-faces="false" data-auto-logout-link="false" data-use-continue-as="false"></div>
+                </div>
+
+                <div class="row omb_row-sm-offset-3 omb_loginOr">
+                    <div class="col-xs-12 col-sm-6">
+                        <hr class="omb_hrOr">
+                        <span class="omb_spanOr">or</span>
+                    </div>
+                </div>
+            
+                <div class="row omb_row-sm-offset-3">
+                    <div class="col-xs-12 col-sm-6">	
+                            <div class="input-group">
+                                <input type="text" id="email" class="form-control" name="username" placeholder="email address">
+                            </div>
+                            <span class="help-block"></span>
+
+                            <div class="input-group">
+                                <input  type="password" id="password" class="form-control" name="password" placeholder="Password">
+                            </div>
+                        
+                            </br>
+                        
+                            <button class="btn btn-lg btn-primary btn-block" id="sign-in">Login</button>
+                            <button class="btn btn-lg btn-primary btn-block" id="sign-up">Sign Up</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

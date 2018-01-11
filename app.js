@@ -4,6 +4,7 @@ var bodyParser = require('body-parser');
 var uuid = require('uuid');
 var mongoose = require('mongoose');
 var admin = require('firebase-admin');
+var cors = require('cors');
 var session = require('express-session')({
     secret: 'my-secret',
     resave: true,
@@ -31,6 +32,8 @@ db.once('open', function() {
     console.log("DB connected!");
 });
 
+//mongoose.set('debug', true);
+
 var Schema = mongoose.Schema;
 
 /*var sessionSchema = new Schema({
@@ -39,11 +42,15 @@ var Schema = mongoose.Schema;
 });*/
 
 var userSchema = new Schema({
-    user_id: String,
-    id: String,
+    uid: String,
     name: String,
-    connection: [],
-    toJoinedRoom: String
+    connection: String,
+    toJoinedRoom: String,
+    contacts: [{
+        _id: false,
+        uid: String,
+        timeSpent: String
+    }]
 });
 
 var socketSchema = new Schema({
@@ -57,6 +64,7 @@ var Socket = mongoose.model('Socket', socketSchema);
 app.use(express.static(__dirname + '/public'));
 app.use(bodyParser.json());
 app.use(session);
+app.use(cors({origin: 'http://localhost:8888'}));
 
 io.use(sharedSession(session, {
     autoSave: true
@@ -95,10 +103,6 @@ io.on('connection', function(socket) {
         }
     });
     
-    /*socket.on('connect', function() {
-        callListeners();
-    });*/
-    
     callListeners();
     //console.log(socket.eventNames());
     
@@ -108,49 +112,57 @@ io.on('connection', function(socket) {
             admin.auth().verifyIdToken(idToken)
                 .then(function(decodedToken) {
                 var uid = decodedToken.uid;
-                //console.log(decodedToken);
+                console.log(decodedToken);
 
-                var array = [];
-                array.push(socket.id);
-                users.id = decodedToken.uid;
+                users.uid = decodedToken.uid;
                 users.name = decodedToken.email;
-                users.connections = array;
+                users.connection = socket.id;
                 users.toJoinedRoom = "";
 
                 socket.handshake.session.uid = decodedToken.uid;
                 socket.handshake.session.save();
 
                 var userProfile = new User(users);
-                User.findOne( { id: decodedToken.uid }, function(err, user) {
+                User.findOne( { uid: decodedToken.uid }, function(err, user) {
                     if(!user) {
                         userProfile.save(function(err) {
-                            if(err)
-                                console.log(err);
-                            else
-                                console.log('User hinzugefügt');
-                        });
-                        console.log('save');
-                    } 
-                    
-                    //console.log(user.toJoinedRoom);
-                    if(user.toJoinedRoom !== "") {
-                        socket.join(user.toJoinedRoom);
-                        socket.joinedRoom = user.toJoinedRoom;
-                        //socket.emit('joinedRoom', user.toJoinedRoom);
-                        io.to(user.toJoinedRoom).emit('joinedRoom', user.toJoinedRoom);
-                        var clients = io.sockets.adapter.rooms[user.toJoinedRoom].sockets;
-                        var tempArray = [];
-                        for(var key in clients) {
-                            tempArray.push(key);
-                        };  
-                        io.to(user.toJoinedRoom).emit('clients', tempArray);
-                        User.findOneAndUpdate( {id: decodedToken.uid}, {$set: {toJoinedRoom: ""}}, function(err, user) {
                             if(err) {
                                 console.log(err);
                             } else {
-                                console.log(user);
+                                console.log('User hinzugefügt');
+                            }
+                            console.log("astast");
+                        });
+                        console.log('save');
+                    } else { //1. User neu gespeichert = toJoinedRoom sowieso leer
+                        //console.log(user.toJoinedRoom);
+                        User.findOneAndUpdate( {uid: decodedToken.uid}, {$set: {'connection': socket.id}}, function(err, user) {
+                            if(err) {
+                                console.log(err);
+                            } else {
+
                             }
                         });
+                        
+                        if(user.toJoinedRoom !== "") {
+                            socket.join(user.toJoinedRoom);
+                            socket.joinedRoom = user.toJoinedRoom;
+                            //socket.emit('joinedRoom', user.toJoinedRoom);
+                            io.to(user.toJoinedRoom).emit('joinedRoom', user.toJoinedRoom);
+                            var clients = io.sockets.adapter.rooms[user.toJoinedRoom].sockets;
+                            var tempArray = [];
+                            for(var key in clients) {
+                                tempArray.push(key);
+                            };  
+                            io.to(user.toJoinedRoom).emit('clients', tempArray);
+                            User.findOneAndUpdate( {id: decodedToken.uid}, {$set: {toJoinedRoom: ""}}, function(err, user) {
+                                if(err) {
+                                    console.log(err);
+                                } else {
+                                    console.log(user);
+                                }
+                            });
+                        }
                     }
                 });
             }).catch(function(error) {
@@ -165,11 +177,15 @@ io.on('connection', function(socket) {
             socket.joinedRoom = roomId;
             socket.emit('roomId', roomId);
             var clients = io.sockets.adapter.rooms[roomId].sockets;
-            var tempArray = [];
             for(var key in clients) {
-                tempArray.push(key);
+                User.findOne( {connection: key}, function(err, user) {
+                    if(err) {
+                    
+                    } else {
+                        io.to(roomId).emit('clients', user.name);
+                    }    
+                });
             };
-            io.to(roomId).emit('clients', tempArray);
         });
 
         socket.on('join', function(roomId) {
@@ -199,10 +215,6 @@ io.on('connection', function(socket) {
             socket.counter = counter;
         });
 
-        socket.on('pause', function(session) {
-            io.to(session).emit('pauseCounter', "pauseCounter");
-        });
-
         socket.on('leave', function(session) {
             var clientId = session.id;
             var roomId = session.roomId;
@@ -213,6 +225,94 @@ io.on('connection', function(socket) {
         });
 
         socket.on('disconnect', function() {
+            if(socket.joinedRoom !== undefined) {
+                if(io.sockets.adapter.rooms[socket.joinedRoom] !== undefined) {
+                    var clients = io.sockets.adapter.rooms[socket.joinedRoom].sockets;
+                    var tempArray = [];
+                    var i = 0;
+                    var j = 0;
+                    for(var key in clients) {
+                        tempArray.push(key);
+                        User.findOne( {uid: socket.handshake.session.uid}, function(err, contact) {
+                            if(err) {
+                                console.log(err);
+                            } else {
+                                //console.log(tempArray[i++]);
+                                User.findOne( {connection: tempArray[i++]}, function(err, userdata) {
+                                    if(userdata) {
+                                        User.findOne( {uid: socket.handshake.session.uid, 'contacts.uid': userdata.uid}, function(err, contacts) {
+                                            //wenn contacts mit einer bestimmten uid nicht vorhanden ist
+                                            //console.log(contacts);
+                                            if(!contacts) {
+                                                //ToDO: zwei Szenarios: der geleavte bekommt Zeit von allen anderen, die zurückgebliebenen bekommen Zeit von geleavten
+                                                User.update( {uid: socket.handshake.session.uid}, {$push: {contacts: {uid: userdata.uid, timeSpent: socket.counter}}}, function(err, user) {
+                                                    if(err) {
+                                                        console.log(err);
+                                                    } else {
+
+                                                    }
+                                                });
+                                            //wenn contacts mit bestimmter uid vorhanden ist
+                                            } else {
+                                                var tempTime = contacts.contacts.filter(function(item) {
+                                                    return item.uid === userdata.uid;
+                                                });
+                                                var newTimeSpentInt = parseInt(tempTime[0].timeSpent) + parseInt(socket.counter);
+                                                var newTimeSpent = newTimeSpentInt.toString();
+                                                User.update( {uid: socket.handshake.session.uid, 'contacts.uid': userdata.uid}, {$set: {'contacts.$.timeSpent': newTimeSpent}}, function(err, user) {
+                                                    if(err) {
+                                                        console.log(err);
+                                                    } else {
+
+                                                    }
+                                                });
+                                            }
+                                        });
+                                    }
+                                });
+                            }
+                        });
+                        //Problem: wenn Zeit aktualisiert wird, wird nciht richtig berechnet
+
+                        User.findOne( {connection: tempArray[j], 'contacts.uid': socket.handshake.session.uid}, function(err, userdata) {
+                            if(err) {
+                                console.log(err);
+                            } else {
+                                if(!userdata) {
+                                    User.update( {connection: tempArray[j++]}, {$push: {contacts: {uid: socket.handshake.session.uid, timeSpent: socket.counter}}}, function(err, user) {
+                                        if(err) {
+                                            console.log(err); 
+                                        } else {
+
+                                        }
+                                    });
+                                } else {
+                                    /*var tempTime = userdata.contacts.filter(function(item) {
+                                        return item.uid === socket.handshake.session.uid;
+                                    });
+                                    var newTimeSpentInt = parseInt(tempTime[0].timeSpent) + parseInt(socket.counter);
+                                    var newTimeSpent = newTimeSpentInt.toString();
+                                    console.log(tempArray[j]);
+                                    console.log(newTimeSpentInt);*/
+                                    User.findOne( {uid: socket.handshake.session.uid, 'contacts.uid': userdata.uid}, function(err, contacts) {
+                                        var tempItem = contacts.contacts.filter(function(item) {
+                                            return item.uid === userdata.uid;
+                                        });
+                                        console.log(tempItem);
+                                        User.update( {connection: tempArray[j++], 'contacts.uid': socket.handshake.session.uid}, {$set: {'contacts.$.timeSpent': tempItem[0].timeSpent}}, function(err, user) {
+                                            if(err) {
+                                                console.log(err);
+                                            } else {
+
+                                            }
+                                        });
+                                    });
+                                }
+                            }
+                        });
+                    };
+                }
+            }
             Socket.findOneAndRemove( {id: socket.id}, function(err, socket) {
                 if(err) {
                     console.log(err);
@@ -222,29 +322,44 @@ io.on('connection', function(socket) {
             console.log(socket.joinedRoom);
             io.to(socket.joinedRoom).emit('leave', {clientId: socket.id, counter: socket.counter});
             socket.leave(socket.joinedRoom);
-            socket.emit('left', 'left');
+            socket.emit('left', socket.counter);
         });
     }
 });
 
 
 app.get('/', function(req, res) {
-    res.sendFile(__dirname + '/public/html/start.html');
+    res.sendFile(__dirname + '/public/html/login.html');
     //res.sendFile(__dirname + '/index.html');
 });
 
-app.get('/start', function(req, res) {
+app.get('/main', function(req, res) {
     res.sendFile(__dirname + '/index.html');
 });
 
-app.get('/start/:roomid', function(req, res) {
+app.get('/contacts', function(req, res) {
+    res.sendFile(__dirname + '/public/html/contacts.html');
+});
+
+app.get('/users/:uid', function(req, res) {
+    User.findOne( {uid: req.params.uid}, function(err, user) {
+        if(err) {
+        
+        } else {
+            res.status(200);
+            res.send(user);
+        }
+    });
+});
+
+app.get('/main/:roomid', function(req, res) {
     if(req.params.roomid !== undefined) {
         var toCheckedId = req.params.roomid.replace("room", "");
-        Socket.findOne( {id: toCheckedId}, function(err, socket) {
+        Socket.findOne( {uid: toCheckedId}, function(err, socket) {
             if(socket) {
                 console.log('verified');
                 console.log(req.session.uid);
-                User.findOneAndUpdate( {id: req.session.uid}, {$set: {toJoinedRoom: req.params.roomid}}, function(err, user) {
+                User.findOneAndUpdate( {uid: req.session.uid}, {$set: {toJoinedRoom: req.params.roomid}}, function(err, user) {
                     if(err) {
                         console.log(err);
                     } else {
