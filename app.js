@@ -355,7 +355,7 @@ app.get('/users/:uid', function(req, res) {
 app.get('/main/:roomid', function(req, res) {
     if(req.params.roomid !== undefined) {
         var toCheckedId = req.params.roomid.replace("room", "");
-        Socket.findOne( {uid: toCheckedId}, function(err, socket) {
+        Socket.findOne( {id: toCheckedId}, function(err, socket) {
             if(socket) {
                 console.log('verified');
                 console.log(req.session.uid);
