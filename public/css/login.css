@@ -4,6 +4,12 @@
     }
 }
 
+@media (max-width: 576px) {
+    .omb_login .omb_authTitle {
+        font-size: 20px;
+    }
+}
+
 .omb_login .omb_authTitle {
     text-align: center;
 	line-height: 300%;

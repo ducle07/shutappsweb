@@ -1,6 +1,9 @@
-@media (min-width: 576px) {
-    .row-xs-offset-3 div:first-child[class*="col-"] {
-        margin-left: 35%;
+@media (max-width: 576px) {
+    body .modal {
+        width: 250px;
+        margin-left: 25%;
+        margin-rigt: 33%;
+        margin-top: 120px;
     }
 }
 
@@ -11,10 +14,4 @@ canvas {
     margin-right: auto;
     display: block;
     width: 200px;
-}
-
-body .modal {
-    width: 250px;
-    margin-left: 40%;
-    margin-top: 50px;
 }
