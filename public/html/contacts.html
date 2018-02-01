@@ -29,7 +29,7 @@
                 if(user) {
                     console.log('user is logged in');
                     console.log(user.uid);
-                    $.get('http://shutappsweb.herokuapp.com/users/' + user.uid, function(data) {
+                    $.get('https://shutappsweb.herokuapp.com/users/' + user.uid, function(data) {
                         console.log(data.contacts);    
                         var seen = [];
                         $('#contacts li').each(function(i, li) {
@@ -37,7 +37,7 @@
                         });
                         data.contacts.forEach(function(element) {
                             if(jQuery.inArray(element, seen) == -1) {
-                                $.get('http://shutappsweb.herokuapp.com/users/' + element.uid, function(user) {
+                                $.get('https://shutappsweb.herokuapp.com/users/' + element.uid, function(user) {
                                     $('#contacts').append("<li>" + user.name + ": " + element.timeSpent + "</li>");
                                 });
                             }
@@ -46,7 +46,7 @@
                 } else {
                     console.log('user is not logged in');
                     window.stop();
-                    window.location.replace('/');
+                    window.location.replace('/login');
                 }
             });
             

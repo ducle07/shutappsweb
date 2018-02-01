@@ -340,18 +340,32 @@ io.on('connection', function(socket) {
     }
 });
 
-
 app.get('/', function(req, res) {
+    res.redirect('/login');
+});
+
+app.get('/login', function(req, res) {
     res.sendFile(__dirname + '/public/html/login.html');
     //res.sendFile(__dirname + '/index.html');
 });
 
-app.get('/main', function(req, res) {
+app.get('/home', function(req, res) {
     res.sendFile(__dirname + '/index.html');
 });
 
 app.get('/contacts', function(req, res) {
     res.sendFile(__dirname + '/public/html/contacts.html');
+});
+
+app.get('/users', function(req, res) {
+    User.find({}, function(err, user) {
+        if(err) {
+            res.status(500);
+        } else {
+            res.status(200);
+            res.send(user);
+        }
+    });
 });
 
 app.get('/users/:uid', function(req, res) {
@@ -364,8 +378,30 @@ app.get('/users/:uid', function(req, res) {
         }
     });
 });
+        
+app.put('/users/:uid', function(req, res) {
+    User.findOneAndUpdate( {uid: req.params.uid}, {$set: req.body}, function(err, user) {
+        if(err) {
+            
+        } else {
+            res.status(200);
+            res.send("User aktualisiert");
+        }
+    });
+});
+    
+app.delete('/users/:uid', function(req, res) {
+    User.findOneAndRemove( {uid: req.params.uid}, function(err, user) {
+        if(err) {
+            
+        } else {
+            res.status(200);
+            res.send("User gelöscht");
+        }
+    });
+});
 
-app.get('/main/:roomid', function(req, res) {
+app.get('/home/:roomid', function(req, res) {
     if(req.params.roomid !== undefined) {
         var toCheckedId = req.params.roomid.replace("room", "");
         Socket.findOne( {id: toCheckedId}, function(err, socket) {
@@ -384,7 +420,7 @@ app.get('/main/:roomid', function(req, res) {
             }
         });
     }
-    res.redirect('/main');
+    res.redirect('/home');
 });
 
 //Port-Einstellungen

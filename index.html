@@ -7,7 +7,7 @@
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
         <link rel="stylesheet" type="text/css" href="../css/index.css">
         
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
         
         <script src="/socket.io/socket.io.js"></script>
         <script src="js/qrious.js"></script>
@@ -79,7 +79,7 @@
                 } else {
                     console.log('user is not logged in');
                     window.stop();
-                    window.location.replace('/');
+                    window.location.replace('/login');
                 }
             });
 
@@ -128,7 +128,7 @@
                 event.preventDefault();
                 socket.emit('create', sessionId);
                 console.log(sessionId);
-                document.getElementById("counter").innerHTML = formatTime(counter); 
+                document.getElementById("counter").inner  HTML = formatTime(counter); 
                 $('#qr-modal').modal('show');
             });
 
@@ -160,7 +160,7 @@
                 //$('#roomText').text(roomId);
                 var qr = new QRious({
                     element: document.getElementById('roomId'),
-                    value: 'https://shutappsweb.herokuapp.com/main/' + roomId
+                    value: 'https://shutappsweb.herokuapp.com/home/' + roomId
                 });
                 session = roomId;
                 //$('#roomHint').text("Bitte QR-Code zum Einladen benutzen!");

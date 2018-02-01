@@ -3,6 +3,8 @@
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
         <link rel="stylesheet" type="text/css" href="../css/login.css">
         
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+        
         <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
         <script src="https://www.gstatic.com/firebasejs/4.5.0/firebase-app.js"></script>
         <script src="https://www.gstatic.com/firebasejs/4.5.0/firebase-auth.js"></script>
@@ -161,7 +163,7 @@
                         }).catch(function(error) {
                             console.log(error);
                         });*/
-                        window.location.replace('/main');
+                        window.location.replace('/home');
                     } else {     
                         document.getElementById('sign-up').addEventListener('click', handleSignUp, false);
                         document.getElementById('sign-in').addEventListener('click', toggleSignIn, false);
