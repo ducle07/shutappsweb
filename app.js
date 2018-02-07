@@ -129,7 +129,6 @@ io.on('connection', function(socket) {
 
                 socket.handshake.session.uid = decodedToken.uid;
                 socket.handshake.session.save();
-                io
 
                 var userProfile = new User(users);
                 User.findOne( { uid: decodedToken.uid }, function(err, user) {
@@ -360,6 +359,15 @@ io.on('connection', function(socket) {
                 }
             });
             socket.leave(socket.joinedRoom);
+            
+            User.findOneAndUpdate( {id: socket.handshake.session.uid}, {$set: {toJoinedRoom: ""}}, function(err, user) {
+                if(err) {
+                    console.log(err);
+                } else {
+                    console.log(user);
+                }
+            });
+            
             socket.emit('left', socket.counter);
         });
     }
