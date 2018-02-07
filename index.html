@@ -142,6 +142,7 @@
 
             $(startForm).submit(function() {
                 event.preventDefault();
+                noSleep.enable();
                 socket.emit('start', session);
             });
 
@@ -183,13 +184,12 @@
                         $('#clients').append("<li>" + element + "</li>");
                     }
                 });*/
-                $('#clients').append("<li>" + data + "</li>");
+                $('#clients').append("<li><div><img src=" + data.picture + ">" + data.name + "</div></li>");
             });
 
             socket.on('startCounter', function(data) {
                 if(data === 'startCounter' && !started) {
                     started = true;
-                    noSleep.enable();
                     myTimer = setInterval(function() {
                         socket.emit('counter', counter);
                         document.getElementById("counter").innerHTML = formatTime(counter); 
@@ -307,8 +307,8 @@
     <body>
         <div clas="container">
             <h1 class="text-center">ShutAppsWeb</h1>
-            <div class="row">
-                <div class="col">
+            <div class="row" style="padding:0 10px;">
+                <div class="col" >
                     </br>
                     <form id="create">
                         <input type="submit" class="btn btn-primary btn-block" value="create session">
@@ -337,7 +337,7 @@
             <p id="counter" class="display-1 text-center">00:00:00</p>
             </br>
             </br>
-            <div class="row">
+            <div class="row" style="padding:0 10px;">
                 <div class="col">
                     <form id="start">
                         <input id="start" class="btn btn-success btn-block" type="submit" value="start session">
@@ -361,7 +361,7 @@
                     <p id="notify"></p>
                 </div>
             </div>
-            <div class="row row-xs-offset-3">
+            <div class="row" style="padding:0 10px;">
                 <div class="col">
                     </br>
                     <button id="sign-out" class="btn btn-danger btn-block" name="sign-out">Sign Out</button>

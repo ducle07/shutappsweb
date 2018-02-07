@@ -44,6 +44,7 @@ var Schema = mongoose.Schema;
 var userSchema = new Schema({
     uid: String,
     name: String,
+    picture: String,
     connection: String,
     toJoinedRoom: String,
     contacts: [{
@@ -112,15 +113,23 @@ io.on('connection', function(socket) {
             admin.auth().verifyIdToken(idToken)
                 .then(function(decodedToken) {
                 var uid = decodedToken.uid;
+                var standardPic = "https://scontent.xx.fbcdn.net/v/t1.0-1/c29.0.100.100/p100x100/10354686_10150004552801856_220367501106153455_n.jpg?oh=049ecfece14dfe681a2cc083eeaabc6f&oe=5AA0FC77";
                 console.log(decodedToken);
 
                 users.uid = decodedToken.uid;
-                users.name = decodedToken.email;
+                if(decodedToken.firebase.sign_in_provider == "facebook.com") {
+                    users.name = decodedToken.name;
+                    users.picture = decodedToken.picture;
+                } else {
+                    users.name = decodedToken.email;
+                    users.picture = standardPic;
+                }
                 users.connection = socket.id;
                 users.toJoinedRoom = "";
 
                 socket.handshake.session.uid = decodedToken.uid;
                 socket.handshake.session.save();
+                io
 
                 var userProfile = new User(users);
                 User.findOne( { uid: decodedToken.uid }, function(err, user) {
@@ -131,7 +140,6 @@ io.on('connection', function(socket) {
                             } else {
                                 console.log('User hinzugefügt');
                             }
-                            console.log("astast");
                         });
                         console.log('save');
                     } else { //1. User neu gespeichert = toJoinedRoom sowieso leer
@@ -155,8 +163,19 @@ io.on('connection', function(socket) {
                                         
                                 } else {
                                     User.findOne( {connection: user.toJoinedRoom.replace("room", "")}, function(err, owner) {
-                                        socket.emit('clients', owner.name);
-                                        io.to(user.toJoinedRoom).emit('clients', userdata.name);
+                                        var ownerData = {
+                                            name: owner.name,
+                                            picture: owner.picture
+                                        };
+                                        
+                                        var userData = {
+                                            name: userdata.name,
+                                            picture: userdata.picture
+                                        }
+                                        //show join notification for joined user
+                                        socket.emit('clients', ownerData);
+                                        //show join notification for all others user in the room
+                                        io.to(user.toJoinedRoom).emit('clients', userData);
                                     });
                                 }    
                             });
@@ -187,13 +206,19 @@ io.on('connection', function(socket) {
                     if(err) {
                     
                     } else {
-                        io.to(roomId).emit('clients', user.name);
-                    }    
+                        if(user) {
+                            var userData = {
+                                name: user.name,
+                                picture: user.picture
+                            }
+                            io.to(roomId).emit('clients', userData);
+                        }
+                    }
                 });
             };
         });
 
-        socket.on('join', function(roomId) {
+        /*socket.on('join', function(roomId) {
             var clientId = roomId.replace("room", "");
             socket.leave(clientId);
 
@@ -207,7 +232,7 @@ io.on('connection', function(socket) {
                 tempArray.push(key);
             };
             io.to(roomId).emit('clients', tempArray);
-        });
+        });*/
 
         socket.on('start', function(session) {
             //console.log(session);
@@ -350,6 +375,7 @@ app.get('/login', function(req, res) {
 });
 
 app.get('/home', function(req, res) {
+    console.log(io.socket);
     res.sendFile(__dirname + '/index.html');
 });
 

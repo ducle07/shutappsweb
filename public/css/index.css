@@ -1,3 +1,9 @@
+@media (min-width: 576px) {
+    .omb_row-sm-offset-3 div:first-child[class*="col-"] {
+        margin-left: 50%;
+    }
+}
+
 @media (max-width: 576px) {
     body .modal {
         width: 250px;
@@ -14,4 +20,8 @@ canvas {
     margin-right: auto;
     display: block;
     width: 200px;
+}
+
+ul {
+     list-style:none;
 }
