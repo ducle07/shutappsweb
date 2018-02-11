@@ -1,14 +1,23 @@
+//Express-module einbinden
 var express = require('express');
+//http-module einbinden
 var http = require('http');
+//body-parser-module einbinden
 var bodyParser = require('body-parser');
-var uuid = require('uuid');
+//mongoose-module einbinden
 var mongoose = require('mongoose');
+//Firebase-Auth Admin-module einbinden
 var admin = require('firebase-admin');
+//cors-module einbinden für Cross-Origin-Requests
 var cors = require('cors');
+//express-session-module einbinden für das Nutzen von express-socket.io-session
 var session = require('express-session')({
     secret: 'my-secret',
     resave: true,
     saveUninitialized: true,
+    cookie: {
+        maxAge: 86400
+    },
     store: new (require('express-sessions')) ({
         storage: 'mongodb',
         instance: mongoose,
@@ -19,11 +28,14 @@ var session = require('express-session')({
         expire: 86400
     })
 });
+//express-socket.io-session-module einbinden zum Teilen von Daten zwischen express und socket.io
 var sharedSession = require('express-socket.io-session');
 var app = express();
 var server = http.createServer(app);
+//socket.io einbinden und mit Express verknüpfen
 var io = require('socket.io')(server);
 
+//Datenbankverbindung zu mLab
 mongoose.connect('mongodb://ducle:mongoshutappsweb@ds133465.mlab.com:33465/shutappsweb');
 
 var db = mongoose.connection;
@@ -32,15 +44,9 @@ db.once('open', function() {
     console.log("DB connected!");
 });
 
-//mongoose.set('debug', true);
-
 var Schema = mongoose.Schema;
 
-/*var sessionSchema = new Schema({
-    session_id: {type: Schema.Types.ObjectId},
-    users: [Schema.Types.ObjectId]
-});*/
-
+//Datenstruktur der User-Daten
 var userSchema = new Schema({
     uid: String,
     name: String,
@@ -54,23 +60,27 @@ var userSchema = new Schema({
     }]
 });
 
+//Datenstruktur der Socket-Daten
 var socketSchema = new Schema({
     id: String
 });
 
-//var Session = mongoose.model('Session', sessionSchema);
 var User = mongoose.model('User', userSchema);
 var Socket = mongoose.model('Socket', socketSchema);
 
+//App-Konfigurationen
+//Zugriff auf die statischen HTML-Seiten
 app.use(express.static(__dirname + '/public'));
 app.use(bodyParser.json());
 app.use(session);
 app.use(cors({origin: 'http://localhost:8888'}));
 
+//socket.io mit express-socket.io-session verknüpfen
 io.use(sharedSession(session, {
     autoSave: true
 }));
 
+//Firebase Auth Admin initialisieren
 admin.initializeApp({
   credential: admin.credential.cert({
       "type": "service_account",
@@ -87,8 +97,7 @@ admin.initializeApp({
   databaseURL: "https://shutappsweb.firebaseio.com"
 });
 
-var users = {};
-
+//Kommunikation durch socket.io
 io.on('connection', function(socket) {
     
     console.log('connected: ' + socket.id);
@@ -96,6 +105,7 @@ io.on('connection', function(socket) {
         id: socket.id
     };
     var saveSocket = new Socket(data);
+    //Speichern der aktiven Sockets auf der Datenbank
     saveSocket.save(function(err) {
         if(err) {
             console.log(err);
@@ -104,19 +114,26 @@ io.on('connection', function(socket) {
         }
     });
     
-    callListeners();
-    //console.log(socket.eventNames());
+    socket.counter = 0;
     
+    callListeners();
+    
+    //Alle Ereignisse, die in der App genutzt werden, werde in die callListeners()-Funktion gepackt
     function callListeners() {
+        //Registiert und horcht auf das auth-Ereignis
         socket.on('auth', function(data) {
             var idToken = data.idToken;
+            //ID-Token ist authentifiziert
             admin.auth().verifyIdToken(idToken)
                 .then(function(decodedToken) {
                 var uid = decodedToken.uid;
                 var standardPic = "https://scontent.xx.fbcdn.net/v/t1.0-1/c29.0.100.100/p100x100/10354686_10150004552801856_220367501106153455_n.jpg?oh=049ecfece14dfe681a2cc083eeaabc6f&oe=5AA0FC77";
                 console.log(decodedToken);
+                var users = {};
 
+                //User-Daten werden erstellt
                 users.uid = decodedToken.uid;
+                //Je nach Login über Facebook oder Firebase werden die User-Daten variiert
                 if(decodedToken.firebase.sign_in_provider == "facebook.com") {
                     users.name = decodedToken.name;
                     users.picture = decodedToken.picture;
@@ -127,11 +144,13 @@ io.on('connection', function(socket) {
                 users.connection = socket.id;
                 users.toJoinedRoom = "";
 
+                //Teilen der authentifizierten User-ID mit Express
                 socket.handshake.session.uid = decodedToken.uid;
                 socket.handshake.session.save();
 
                 var userProfile = new User(users);
                 User.findOne( { uid: decodedToken.uid }, function(err, user) {
+                    //Speichern der erstellten User-Daten auf der Datenbank
                     if(!user) {
                         userProfile.save(function(err) {
                             if(err) {
@@ -140,9 +159,10 @@ io.on('connection', function(socket) {
                                 console.log('User hinzugefügt');
                             }
                         });
-                        console.log('save');
-                    } else { //1. User neu gespeichert = toJoinedRoom sowieso leer
+                        //console.log('save');
+                    } else { 
                         //console.log(user.toJoinedRoom);
+                        //ein aktiver Socket wird dem Nutzer zugeordnet und in der Datenbank zwischengespeichert
                         User.findOneAndUpdate( {uid: decodedToken.uid}, {$set: {'connection': socket.id}}, function(err, user) {
                             if(err) {
                                 console.log(err);
@@ -151,39 +171,46 @@ io.on('connection', function(socket) {
                             }
                         });
                         
+                        //In dem Fall, das in toJoinedRoom eine Socket-ID gespeichert ist, wird der Nutzer in diesem Raum zugeordnet
                         if(user.toJoinedRoom !== "") {
+                            //Beefehl zum Beitreten
                             socket.join(user.toJoinedRoom);
+                            //setzt toJoinedRoom wieder auf einen leeren String
+                            User.findOneAndUpdate( {uid: decodedToken.uid}, {$set: {toJoinedRoom: ""}}, function(err, user) {
+                                if(err) {
+                                    console.log(err);
+                                } else {
+                                    console.log(user);
+                                }
+                            });
                             socket.joinedRoom = user.toJoinedRoom;
-                            //socket.emit('joinedRoom', user.toJoinedRoom);
-                            io.to(user.toJoinedRoom).emit('joinedRoom', user.toJoinedRoom);
+                            //Anzeige aller im Raum vorhandenen Clients
                             var clients = io.sockets.adapter.rooms[user.toJoinedRoom].sockets;
                             User.findOne( {connection: socket.id}, function(err, userdata) {
                                 if(err) {
                                         
                                 } else {
                                     User.findOne( {connection: user.toJoinedRoom.replace("room", "")}, function(err, owner) {
-                                        var ownerData = {
-                                            name: owner.name,
-                                            picture: owner.picture
-                                        };
-                                        
-                                        var userData = {
-                                            name: userdata.name,
-                                            picture: userdata.picture
+                                        if(owner) {
+                                            var ownerData = {
+                                                name: owner.name,
+                                                picture: owner.picture
+                                            };
+                                        }
+                                        if(userdata) {
+                                            var userData = {
+                                                name: userdata.name,
+                                                picture: userdata.picture
+                                            }
                                         }
                                         //show join notification for joined user
+                                        //Darstellung der im Raum befindenen Nutzer aus Sicht des neuen Nutzers
                                         socket.emit('clients', ownerData);
                                         //show join notification for all others user in the room
+                                        //Darstellung der im Raum befindenen Nutzer aus Sicht der anderen Nutzer
                                         io.to(user.toJoinedRoom).emit('clients', userData);
                                     });
                                 }    
-                            });
-                            User.findOneAndUpdate( {id: decodedToken.uid}, {$set: {toJoinedRoom: ""}}, function(err, user) {
-                                if(err) {
-                                    console.log(err);
-                                } else {
-                                    console.log(user);
-                                }
                             });
                         }
                     }
@@ -193,204 +220,200 @@ io.on('connection', function(socket) {
             });
         });
 
+        //Registiert und horcht auf das create-Ereignis
         socket.on('create', function(client) {
             var roomId = 'room' + client;
-            socket.leave(client);
-            socket.join(roomId);
-            socket.joinedRoom = roomId;
-            socket.emit('roomId', roomId);
-            var clients = io.sockets.adapter.rooms[roomId].sockets;
-            for(var key in clients) {
-                User.findOne( {connection: key}, function(err, user) {
-                    if(err) {
-                    
-                    } else {
-                        if(user) {
-                            var userData = {
-                                name: user.name,
-                                picture: user.picture
+            //Da jeder Nutzer einen Raum mit seiner socket.id hat, wird der Nutzer erst aus dem Raum geworfen
+            //und anschließend in dem neuen Raum mit der neuen ID zugeordnet
+            if(socket.counter == 0) {
+                socket.leave(client);
+                socket.join(roomId);
+                socket.joinedRoom = roomId;
+                var clients = io.sockets.adapter.rooms[roomId].sockets;
+                for(var key in clients) {
+                    User.findOne( {connection: key}, function(err, user) {
+                        if(err) {
+
+                        } else {
+                            if(user) {
+                                var userData = {
+                                    name: user.name,
+                                    picture: user.picture
+                                }
+                                io.to(roomId).emit('clients', userData);
                             }
-                            io.to(roomId).emit('clients', userData);
                         }
-                    }
-                });
-            };
+                    });
+                };
+            }
+            //Senden der Raum-ID zum Client für das Erstellen des QR-Codes
+            socket.emit('roomId', roomId);
         });
 
-        /*socket.on('join', function(roomId) {
-            var clientId = roomId.replace("room", "");
-            socket.leave(clientId);
-
-            socket.join(roomId);
-            socket.joinedRoom = roomId;
-            //socket.emit('joinedRoom', roomId);
-            var clients = io.sockets.adapter.rooms[roomId].sockets;
-            //console.log(io.sockets.adapter.rooms);
-            var tempArray = [];
-            for(var key in clients) {
-                tempArray.push(key);
-            };
-            io.to(roomId).emit('clients', tempArray);
-        });*/
-
+        //Registiert und horcht auf start-Ereignis
         socket.on('start', function(session) {
             //console.log(session);
+            //Server weiß Bescheid und sendet endgültigen Befehl zum Starten des Timers
             io.to(session).emit('startCounter', "startCounter");
-            //console.log(io.sockets.adapter.rooms);
         });
 
+        //Registiert und horcht auf counter-Ereignis
+        //aktuelle Zeit des laufenden Timers wird zwischengespeichert
         socket.on('counter', function(counter) {
-            console.log(counter);
+            //console.log(counter);
             socket.counter = counter;
         });
 
-        socket.on('leave', function(session) {
-            var clientId = session.id;
-            var roomId = session.roomId;
-            if(io.sockets.adapter.sids[socket.id][roomId]) {
-                socket.leave(roomId);
-                io.to(roomId).emit('leave', {clientId: clientId, counter: socket.counter});
-            }
-        });
-
+        //registiert und horcht auf disconnect-Ereignis
+        //wird jedes Mal ausgeführt, sobald eine aktuelle Socket-Verbindung getrennt wird
         socket.on('disconnect', function() {
-            if(socket.joinedRoom !== undefined) {
-                if(io.sockets.adapter.rooms[socket.joinedRoom] !== undefined) {
-                    var clients = io.sockets.adapter.rooms[socket.joinedRoom].sockets;
-                    var tempArray = [];
-                    var i = 0;
-                    var j = 0;
-                    for(var key in clients) {
-                        tempArray.push(key);
-                        User.findOne( {uid: socket.handshake.session.uid}, function(err, contact) {
-                            if(err) {
-                                console.log(err);
-                            } else {
-                                //console.log(tempArray[i++]);
-                                User.findOne( {connection: tempArray[i++]}, function(err, userdata) {
-                                    if(userdata) {
-                                        User.findOne( {uid: socket.handshake.session.uid, 'contacts.uid': userdata.uid}, function(err, contacts) {
-                                            //wenn contacts mit einer bestimmten uid nicht vorhanden ist
-                                            //console.log(contacts);
-                                            if(!contacts) {
-                                                //ToDO: zwei Szenarios: der geleavte bekommt Zeit von allen anderen, die zurückgebliebenen bekommen Zeit von geleavten
-                                                User.update( {uid: socket.handshake.session.uid}, {$push: {contacts: {uid: userdata.uid, timeSpent: socket.counter}}}, function(err, user) {
-                                                    if(err) {
-                                                        console.log(err);
-                                                    } else {
+            if(socket.counter > 0) {
+                //Kontrolle, ob der Socket während der Verbindung in einem Raum war
+                if(socket.joinedRoom !== undefined) {
+                    if(io.sockets.adapter.rooms[socket.joinedRoom] !== undefined) {
+                        var clients = io.sockets.adapter.rooms[socket.joinedRoom].sockets;
+                        var tempArray = [];
+                        var i = 0;
+                        var j = 0;
+                        //Berechnung der verbrachten Zeit in einem Raum
+                        for(var key in clients) {
+                            tempArray.push(key);
+                            User.findOne( {uid: socket.handshake.session.uid}, function(err, contact) {
+                                if(err) {
+                                    console.log(err);
+                                } else {
+                                    //console.log(tempArray[i++]);
+                                    //Berechnung der verbrachten Zeit aus der Sicht 1:n
+                                    User.findOne( {connection: tempArray[i++]}, function(err, userdata) {
+                                        if(userdata) {
+                                            User.findOne( {uid: socket.handshake.session.uid, 'contacts.uid': userdata.uid}, function(err, contacts) {
+                                                //wenn contacts mit einer bestimmten uid noch nicht vorhanden ist
+                                                //neuer Eintrag wird erstellt
+                                                //console.log(contacts);
+                                                if(!contacts) {
+                                                    User.update( {uid: socket.handshake.session.uid}, {$push: {contacts: {uid: userdata.uid, timeSpent: socket.counter}}}, function(err, user) {
+                                                        if(err) {
+                                                            console.log(err);
+                                                        } else {
 
-                                                    }
-                                                });
-                                            //wenn contacts mit bestimmter uid vorhanden ist
-                                            } else {
-                                                var tempTime = contacts.contacts.filter(function(item) {
-                                                    return item.uid === userdata.uid;
-                                                });
-                                                var newTimeSpentInt = parseInt(tempTime[0].timeSpent) + parseInt(socket.counter);
-                                                var newTimeSpent = newTimeSpentInt.toString();
-                                                User.update( {uid: socket.handshake.session.uid, 'contacts.uid': userdata.uid}, {$set: {'contacts.$.timeSpent': newTimeSpent}}, function(err, user) {
-                                                    if(err) {
-                                                        console.log(err);
-                                                    } else {
+                                                        }
+                                                    });
+                                                //wenn contacts mit bestimmter uid vorhanden ist
+                                                //auf vorhandenen Eintrag zugreifen und Zeit aktualisieren
+                                                } else {
+                                                    var tempTime = contacts.contacts.filter(function(item) {
+                                                        return item.uid === userdata.uid;
+                                                    });
+                                                    var newTimeSpentInt = parseInt(tempTime[0].timeSpent) + parseInt(socket.counter);
+                                                    var newTimeSpent = newTimeSpentInt.toString();
+                                                    User.update( {uid: socket.handshake.session.uid, 'contacts.uid': userdata.uid}, {$set: {'contacts.$.timeSpent': newTimeSpent}}, function(err, user) {
+                                                        if(err) {
+                                                            console.log(err);
+                                                        } else {
 
-                                                    }
-                                                });
-                                            }
-                                        });
-                                    }
-                                });
-                            }
-                        });
-                        //Problem: wenn Zeit aktualisiert wird, wird nciht richtig berechnet
-
-                        User.findOne( {connection: tempArray[j], 'contacts.uid': socket.handshake.session.uid}, function(err, userdata) {
-                            if(err) {
-                                console.log(err);
-                            } else {
-                                if(!userdata) {
-                                    User.update( {connection: tempArray[j++]}, {$push: {contacts: {uid: socket.handshake.session.uid, timeSpent: socket.counter}}}, function(err, user) {
-                                        if(err) {
-                                            console.log(err); 
-                                        } else {
-
+                                                        }
+                                                    });
+                                                }
+                                            });
                                         }
                                     });
+                                }
+                            });
+                            //Berechnung der verbrachten Zeit aus der Sicht n:1
+                            User.findOne( {connection: tempArray[j], 'contacts.uid': socket.handshake.session.uid}, function(err, userdata) {
+                                if(err) {
+                                    console.log(err);
                                 } else {
-                                    /*var tempTime = userdata.contacts.filter(function(item) {
-                                        return item.uid === socket.handshake.session.uid;
-                                    });
-                                    var newTimeSpentInt = parseInt(tempTime[0].timeSpent) + parseInt(socket.counter);
-                                    var newTimeSpent = newTimeSpentInt.toString();
-                                    console.log(tempArray[j]);
-                                    console.log(newTimeSpentInt);*/
-                                    User.findOne( {uid: socket.handshake.session.uid, 'contacts.uid': userdata.uid}, function(err, contacts) {
-                                        var tempItem = contacts.contacts.filter(function(item) {
-                                            return item.uid === userdata.uid;
-                                        });
-                                        console.log(tempItem);
-                                        User.update( {connection: tempArray[j++], 'contacts.uid': socket.handshake.session.uid}, {$set: {'contacts.$.timeSpent': tempItem[0].timeSpent}}, function(err, user) {
+                                    //der verlassende Client ist noch nicht im contacts-Array vorhanden
+                                    //neuer Eintrag wird erstellt
+                                    if(!userdata) {
+                                        User.update( {connection: tempArray[j++]}, {$push: {contacts: {uid: socket.handshake.session.uid, timeSpent: socket.counter}}}, function(err, user) {
                                             if(err) {
-                                                console.log(err);
+                                                console.log(err); 
                                             } else {
 
                                             }
                                         });
-                                    });
+                                    //der verlassende Client ist im contacts-Array vorhanden
+                                    } else {
+                                        //Warte bis die vorherige Berechnung durchgeführt wurde
+                                        setTimeout(function() {
+                                            User.findOne( {uid: socket.handshake.session.uid, 'contacts.uid': userdata.uid}, function(err, contacts) {
+                                                var tempItem = contacts.contacts.filter(function(item) {
+                                                    return item.uid === userdata.uid;
+                                                });
+                                                User.update( {connection: tempArray[j++], 'contacts.uid': socket.handshake.session.uid}, {$set: {'contacts.$.timeSpent': tempItem[0].timeSpent}}, function(err, user) {
+                                                    if(err) {
+                                                        console.log(err);
+                                                    } else {
+                                                        console.log(user);
+                                                    }
+                                                });
+                                            });
+                                        }, 750);
+                                    }
                                 }
-                            }
-                        });
-                    };
+                            }); 
+                        };
+                    }
+                    //dieser Client verlässt den Raum
+                    socket.leave(socket.joinedRoom);
                 }
             }
+            //entfernt den geschlossenen Socket aus der Datenbank
             Socket.findOneAndRemove( {id: socket.id}, function(err, socket) {
                 if(err) {
                     console.log(err);
                 }
             });
             console.log('user disconnected ' + socket.joinedRoom + " " + socket.id);
-            console.log(socket.joinedRoom);
+            //console.log(socket.joinedRoom);
             User.findOne( {connection: socket.id}, function(err, user) {
                 if(err) {
                 
                 } else {
                     if(user) {
+                        //Benachrichtigung der im Raum verbleibenen Clients über das Verlassen dieses Clients
                         io.to(socket.joinedRoom).emit('leave', {clientId: user.name, counter: socket.counter});
                     }
                 }
             });
-            socket.leave(socket.joinedRoom);
             
-            User.findOneAndUpdate( {id: socket.handshake.session.uid}, {$set: {toJoinedRoom: ""}}, function(err, user) {
+            //Wert von toJoinedRoom wird auf einen leeren String gesetzt, wenn das nicht bereits schon getan wurde
+            User.findOneAndUpdate( {uid: socket.handshake.session.uid}, {$set: {toJoinedRoom: ""}}, function(err, user) {
                 if(err) {
                     console.log(err);
                 } else {
-                    console.log(user);
+                    //console.log(user);
                 }
             });
-            
-            socket.emit('left', socket.counter);
         });
     }
 });
 
+//Route '/': Weiterleitung auf /login
 app.get('/', function(req, res) {
     res.redirect('/login');
 });
 
+//Route '/login': Präsentiert die statische HTML-Seite login.html
 app.get('/login', function(req, res) {
     res.sendFile(__dirname + '/public/html/login.html');
     //res.sendFile(__dirname + '/index.html');
 });
 
+//Route '/home': Präsentiert die statische HTML-Seite index.html
 app.get('/home', function(req, res) {
-    console.log(io.socket);
+    //console.log(io.socket);
     res.sendFile(__dirname + '/index.html');
 });
 
+//Route '/contacts': Präsentiert die statische HTML-Seite contacts.html
 app.get('/contacts', function(req, res) {
     res.sendFile(__dirname + '/public/html/contacts.html');
 });
 
+//Route '/users': Präsentiert alle in der Datenbank gespeichert User
 app.get('/users', function(req, res) {
     User.find({}, function(err, user) {
         if(err) {
@@ -402,6 +425,7 @@ app.get('/users', function(req, res) {
     });
 });
 
+//Route '/users/:uid': Präsentiert einen bestimmten User mit der User-ID uid
 app.get('/users/:uid', function(req, res) {
     User.findOne( {uid: req.params.uid}, function(err, user) {
         if(err) {
@@ -413,6 +437,7 @@ app.get('/users/:uid', function(req, res) {
     });
 });
         
+//Route '/users/:uid' zum Aktualisieren des Users uid
 app.put('/users/:uid', function(req, res) {
     User.findOneAndUpdate( {uid: req.params.uid}, {$set: req.body}, function(err, user) {
         if(err) {
@@ -424,6 +449,7 @@ app.put('/users/:uid', function(req, res) {
     });
 });
     
+//Route '/users/:uid' zum Löschen des Users uid
 app.delete('/users/:uid', function(req, res) {
     User.findOneAndRemove( {uid: req.params.uid}, function(err, user) {
         if(err) {
@@ -435,13 +461,17 @@ app.delete('/users/:uid', function(req, res) {
     });
 });
 
+//Route '/home/:roomid' zur Anfrage zum Beitreten eines Raumes
 app.get('/home/:roomid', function(req, res) {
     if(req.params.roomid !== undefined) {
         var toCheckedId = req.params.roomid.replace("room", "");
+        //Kontrolle, ob die in der Raum-ID gespeicherten Socket-ID vorhanden ist
         Socket.findOne( {id: toCheckedId}, function(err, socket) {
+            //Socket-ID ist vorhanden
             if(socket) {
-                console.log('verified');
-                console.log(req.session.uid);
+                //console.log('verified');
+                //console.log(req.session.uid);
+                //Speichern der zu beitretenden Raum-ID in toJoinedRoom des anfragenden Clients
                 User.findOneAndUpdate( {uid: req.session.uid}, {$set: {toJoinedRoom: req.params.roomid}}, function(err, user) {
                     if(err) {
                         console.log(err);
@@ -449,11 +479,13 @@ app.get('/home/:roomid', function(req, res) {
                         console.log(user);
                     }
                 });
+            //Socket-ID nicht vorhanden
             } else {
-                console.log('fake');
+                //console.log('not verified');
             }
         });
     }
+    //Weiterleitung auf die Route /home
     res.redirect('/home');
 });
 

@@ -1,7 +1,7 @@
 {
-  "name": "Controlling_Apps_in_Social_Contexts",
+  "name": "webapp",
   "version": "0.0.1",
-  "description": "Web-Umsetzung der App",
+  "description": "Umsetzung der Web-App",
   "main": "app.js",
   "dependencies": {
     "body-parser": "^1.17.2",
@@ -12,9 +12,7 @@
     "express-socket.io-session": "^1.3.2",
     "firebase-admin": "^5.4.2",
     "mongoose": "^4.11.1",
-    "pug": "^2.0.0-rc.2",
-    "socket.io": "^2.0.3",
-    "uuid": "^3.1.0"
+    "socket.io": "^2.0.3"
   },
   "start": "node app.js",
   "devDependencies": {},

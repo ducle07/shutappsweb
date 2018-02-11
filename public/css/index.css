@@ -25,3 +25,7 @@ canvas {
 ul {
      list-style:none;
 }
+
+#nosleep {
+    display: none;
+}

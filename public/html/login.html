@@ -1,15 +1,20 @@
+<!--HTML-Seite für den Login-->
 <html>
     <head>
+        <!--BootStrap einbinden-->
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
         <link rel="stylesheet" type="text/css" href="../css/login.css">
         
+        <!--maximaler Bereich der Darstellung von Inhalten orientiert sich am Browserfenster-->
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
         
+        <!--jQuery einbinden-->
         <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+        <!--Firebase und Firebase Authentication einbinden-->
         <script src="https://www.gstatic.com/firebasejs/4.5.0/firebase-app.js"></script>
         <script src="https://www.gstatic.com/firebasejs/4.5.0/firebase-auth.js"></script>
         <script>
-            // Initialize Firebase
+            //Firebase intialisieren
             var config = {
                 apiKey: "AIzaSyBlPLppOtBkBo6XYq3wm17EGNOy8FhsUpM",
                 authDomain: "shutappsweb.firebaseapp.com",
@@ -22,6 +27,12 @@
         </script>
 
         <script>
+            //Funktion zum Erstellen eines Nutzers in Firebase
+            //
+            //Bereitgestellt durch Firebase:
+            //https://github.com/firebase/quickstart-js/blob/master/auth/email.html#L82
+            //
+            //
             function handleSignUp() {
               var email = document.getElementById('email').value;
               var password = document.getElementById('password').value;
@@ -51,6 +62,12 @@
               // [END createwithemail]
             }
             
+            //Funktion zum Anmelden eines erstellten Nutzers in Firebase
+            //
+            //Bereitgestellt durch Firebase:
+            //https://github.com/firebase/quickstart-js/blob/master/auth/email.html#L42
+            //
+            //modifiziert durch Autor
             function toggleSignIn() {
               if (firebase.auth().currentUser) {
                 // [START signout]
@@ -86,6 +103,7 @@
               }
             }
             
+            //Funktion zum Abmelden des eingeloggten Nutzers
             function signOut() {
                 firebase.auth().signOut().then(function() {
                     console.log('user logged out');
@@ -94,6 +112,12 @@
                 });
             }
             
+            //Funktion zum Erfragen des Login-Status über Facebook
+            //
+            //bereitgestellt durch Firebase:
+            //https://firebase.google.com/docs/auth/web/facebook-login
+            //
+            //
             function checkLoginState(event) {
               if (event.authResponse) {
                 // User is signed-in Facebook.
@@ -125,6 +149,12 @@
               }
             }
             
+            //Funktionen zum Kontrollieren, ob der Facebook-Nutzer nicht schon bereits über Firebase angemeldet ist anhand der User-ID
+            //
+            //bereitgestellt durch Firebase:
+            //https://firebase.google.com/docs/auth/web/facebook-login
+            //
+            //
             function isUserEqual(facebookAuthResponse, firebaseUser) {
               if (firebaseUser) {
                 var providerData = firebaseUser.providerData;
@@ -141,39 +171,24 @@
             }
             
             window.onload = function() {
-                
+                //Login-Status des Nutzers
                 firebase.auth().onAuthStateChanged(function(user) {
+                    //Nutzer ist eingeloggt, wird weitergeleitet auf /home
                     if(user) {
                         console.log('logged in');
-                        /*firebase.auth().currentUser.getIdToken(true).then(function(idToken) {
-                            console.log(idToken);
-                            var data = {
-                                idToken: idToken
-                            };
-                            $.ajax({
-                                type: 'POST',
-                                url: '/verify',
-                                data: JSON.stringify(data),
-                                contentType: 'application/json'
-                            }).done(function(response, status, header) {
-                                console.log('idToken gesendet');
-                            }).fail(function(error) {
-                                console.log('idToken konnte nicht gesendet werden');
-                            });
-                        }).catch(function(error) {
-                            console.log(error);
-                        });*/
                         window.location.replace('/home');
-                    } else {     
-                        document.getElementById('sign-up').addEventListener('click', handleSignUp, false);
-                        document.getElementById('sign-in').addEventListener('click', toggleSignIn, false);
-                    }
+                    } 
                 });
+                //Button-Logik zum Erstellen und Anmelden
+                document.getElementById('sign-up').addEventListener('click', handleSignUp, false);
+                document.getElementById('sign-in').addEventListener('click', toggleSignIn, false);
+                //Kontrolle, ob der Nutzer über Facebook angemeldet ist
                 FB.Event.subscribe('auth.authResponseChange', checkLoginState);
             };   
         </script>
     </head>
     <body>
+        <!--Facebook SDK initialisieren-->
         <div id="fb-root"></div>
         <script>
           window.fbAsyncInit = function() {
@@ -209,11 +224,14 @@
         <div class="container">    
 
             <div class="omb_login">
+                <!--title-->
                 <h3 class="omb_authTitle">Login or Sign up for ShutAppsWeb</h3>
+                <!--Facebook-Button-->
                 <div class="omb_central">
                     <div class="fb-login-button" data-max-rows="1" data-size="large" data-button-type="login_with" data-show-faces="false" data-auto-logout-link="false" data-use-continue-as="false"></div>
                 </div>
-
+                    
+                <!--Trennlinie-->
                 <div class="row omb_row-sm-offset-3 omb_loginOr">
                     <div class="col-xs-12 col-sm-6">
                         <hr class="omb_hrOr">
@@ -221,6 +239,7 @@
                     </div>
                 </div>
             
+                <!--Login-Formular-->
                 <div class="row omb_row-sm-offset-3">
                     <div class="col-xs-12 col-sm-6">	
                             <div class="input-group">
@@ -233,7 +252,7 @@
                             </div>
                         
                             </br>
-                        
+                            <!--Buttons zum Erstellen und Anmelden-->
                             <button class="btn btn-lg btn-primary btn-block" id="sign-in">Login</button>
                             <button class="btn btn-lg btn-primary btn-block" id="sign-up">Sign Up</button>
                     </div>

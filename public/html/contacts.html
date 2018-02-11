@@ -1,16 +1,21 @@
+<!--HTML-Seite zur Darstellung der in den Räumen verbrachten Kontakten
 <html>
     <head>
+        <!--jQuery einbinden-->
         <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+        <!--BootStrap einbinden-->
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.3/js/bootstrap.min.js" integrity="sha384-a5N7Y/aK3qNeh15eJKGWxsqtnX/wWdSZSKp+81YjTmS15nvnvxKHuzaWwXHDli+4" crossorigin="anonymous"></script>
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
         
+        <!--maximaler Bereich der Darstellung von Inhalten orientiert sich am Browserfenster-->
         <meta name="viewport" content="width=device-width, initial-scale=1">
         
+        <!--Firebase und Firebase Authentication einbinden-->
         <script src="https://www.gstatic.com/firebasejs/4.5.0/firebase-app.js"></script>
         <script src="https://www.gstatic.com/firebasejs/4.5.0/firebase-auth.js"></script>
         
         <script>
-            // Initialize Firebase
+            // Firebase intialisieren
             var config = {
                 apiKey: "AIzaSyBlPLppOtBkBo6XYq3wm17EGNOy8FhsUpM",
                 authDomain: "shutappsweb.firebaseapp.com",
@@ -24,25 +29,41 @@
         
         <script>
         $(function() {
-        
+          //Login-Status des Nutzers erfragen
           firebase.auth().onAuthStateChanged(function(user) {
+                //Nutzer ist eingeloggt
                 if(user) {
-                    console.log('user is logged in');
-                    console.log(user.uid);
-                    $.get('https://shutappsweb.herokuapp.com/users/' + user.uid, function(data) {
-                        console.log(data.contacts);    
+                    //console.log('user is logged in');
+                    //console.log(user.uid);
+                    
+                    var heroku = true;
+                    
+                    if(heroku) {
+                        var path = "https://shutappsweb.herokuapp.com";
+                    } else {
+                        //IP-Adresse je nach Computer anpassen
+                        var path = "http://192.168.1.13:8888";
+                    }
+                    
+                    //GET-Request an die Ressource /users/:uid mit der ID des eingeloggten Nutzers
+                    $.get(path + '/users/' + user.uid, function(data) {
+                        //console.log(data.contacts);    
                         var seen = [];
                         $('#contacts li').each(function(i, li) {
                             seen.push($(li).text());
                         });
                         data.contacts.forEach(function(element) {
                             if(jQuery.inArray(element, seen) == -1) {
-                                $.get('https://shutappsweb.herokuapp.com/users/' + element.uid, function(user) {
-                                    $('#contacts').append("<li>" + user.name + ": " + element.timeSpent + "</li>");
+                                //GET-Request zum Holen der Kontakte vom eingeloggten Nutzer
+                                //Darstellung in HTML als Listenelemente
+                                $.get(path + '/users/' + element.uid, function(user) {
+                                    $('#contacts').append("<li>" + user.name + ": " + element.timeSpent + " Sekunden</li>");
                                 });
                             }
                         });
                     });
+                //Nutzer ist nicht eingeloggt    
+                //Seite wird nicht geöffnet und zurück auf /login weitergeleitet    
                 } else {
                     console.log('user is not logged in');
                     window.stop();
@@ -54,7 +75,7 @@
         </script>
     </head>
     <body>
-        
+    <!--Darstellung der Kontakte in einer Liste-->    
     <ul id="contacts" class="h5"></ul>
         
     </body>

@@ -1,22 +1,30 @@
+<!--Home-Seite der Anwendung-->
 <!doctype html>
 <html>
     <head>
       <title>ShutAppsWeb</title>
+        <!--jQuery einbinden-->
         <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+        <!--BootStrap einbinden-->
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.3/js/bootstrap.min.js" integrity="sha384-a5N7Y/aK3qNeh15eJKGWxsqtnX/wWdSZSKp+81YjTmS15nvnvxKHuzaWwXHDli+4" crossorigin="anonymous"></script>
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.2/css/bootstrap.min.css" integrity="sha384-PsH8R72JQ3SOdhVi3uxftmaW6Vc51MKb0q5P2rRUpPvrszuE4W1povHYgTpBfshb" crossorigin="anonymous">
+        <!--externes CSS-Script einbinden-->
         <link rel="stylesheet" type="text/css" href="../css/index.css">
         
+        <!--maximaler Bereich der Darstellung von Inhalten orientiert sich am Browserfenster-->
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
         
+        <!--clientseitiges socket.io einbinden-->
         <script src="/socket.io/socket.io.js"></script>
+        <!--QRious einbinden-->
         <script src="js/qrious.js"></script>
+        <!--NoSleep.js einbinden-->
         <script src="js/NoSleep.js"></script>
-        <script src="js/ifvisible.js"></script>
+        <!--Firebase und Firebase Authentication einbinden-->
         <script src="https://www.gstatic.com/firebasejs/4.5.0/firebase-app.js"></script>
         <script src="https://www.gstatic.com/firebasejs/4.5.0/firebase-auth.js"></script>
         <script>
-            // Initialize Firebase
+            //Firebase initialisieren
             var config = {
                 apiKey: "AIzaSyBlPLppOtBkBo6XYq3wm17EGNOy8FhsUpM",
                 authDomain: "shutappsweb.firebaseapp.com",
@@ -28,6 +36,7 @@
             firebase.initializeApp(config);
         </script> 
         <script>
+          //Facebook SDK initialisieren    
           window.fbAsyncInit = function() {
             FB.init({
               appId            : '1178256845650984',
@@ -54,28 +63,36 @@
             var counter = 0;
             var myTimer;
             var noSleep = new NoSleep();
-            var wakeLockEnabled = false;
-            var started = false;
             var tempCounter;
             var formattedTempCounter;
             var timeFormat;
+            var created = false;
 
+            //Registieren des connect-Ereignisses in socket.io
+            //wird ausgeführt, sobald eine neue Socket-Verbindung aufgebaut ist
             socket.on('connect', function () {
+                //socket.id
                 sessionId = socket.io.engine.id;
                 //console.log('Connected ' + sessionId);    
             });
 
+            //Kontrolle, ob eingeloggter Nutzer noch eingeloggt ist
             firebase.auth().onAuthStateChanged(function(user) {
+                //Nutzer ist noch eingeloggt
                 if(user) {
                     console.log('user is logged in');
+                    //Senden eines ID-Tokens an den Server zur Authentifizierung
                     firebase.auth().currentUser.getIdToken(true).then(function(idToken) {
                         var data = {
                             idToken: idToken
                         };
+                        //Auslösen des auth-Ereignis mit dem ID-Token
                         socket.emit('auth', data);
                     }).catch(function(error) {
                         console.log(error);
                     });
+                //Nutzer ist nicht mehr eingeloggt
+                //auf /login zurückgeleitet
                 } else {
                     console.log('user is not logged in');
                     window.stop();
@@ -83,38 +100,31 @@
                 }
             });
 
+            //Einsatz der PageVisibility API
             document.addEventListener('visibilitychange', function(e) {
+                //Seite ist nicht mehr im Hauptfokus des Browsers
                 if(document.hidden) {
+                    //aktuelle socket.io-Verbindung wird getrennt
                     socket.io.disconnect();
+                    //Timer wird gestoppt
                     clearInterval(myTimer);
+                    //letzter Wert des Timers wird auf dem Client zwischengespeichert
                     tempCounter = counter;
+                    //Wert des Timers auf 0 zurückgesetzt
                     counter = 0;
+                    //Formatierung des Timers
                     document.getElementById("counter").innerHTML = formatTime(counter); 
                     $('#clients').empty();
+                    //Wakelock wird entfernt
                     noSleep.disable();
+                //Seite ist wieder im Hauptfokus des Browsers
                 } else {
-                    socket.io.connect();
-                    var loggedUser = firebase.auth().currentUser.providerData[0].providerId;
-                    if(loggedUser == "facebook.com") {
-                        if(tempCounter != 0) {
-                            if(tempCounter > 59) {
-                                timeFormat = "Minuten";
-                                formattedTempCounter = formatTimeFB(tempCounter);
-                            } else if(tempCounter == 1) {
-                                timeFormat = "Sekunde";
-                                formattedTempCounter = tempCounter;
-                            } else {
-                                timeFormat = "Sekunden";
-                                formattedTempCounter = tempCounter;
-                            }
-
-                            var r = confirm("Sie haben " + formattedTempCounter + " " + timeFormat + " ausgehalten! Wollen Sie das auf Facebook teilen?");
-                            if(r) {
-                                postFB(tempCounter);
-                            } else {
-                                alert("Sie haben es nicht geteilt!");
-                            }
-                        }
+                    //socket.io.connect();
+                    if(tempCounter > 0) {
+                        //Methode zum Posten auf Facebook wird ausgeführt
+                        //
+                        //Nutzer wird gefragt, ob er die aktuelle Zeit des Timers auf Facebook posten möchte
+                        facebookPost(tempCounter-1);
                     }
                 }
             });
@@ -124,72 +134,113 @@
             var startForm = $('#start');
             var leaveForm = $('#leave');
 
+            //Logik wird ausgeführt, wenn Nutzer auf den create session-Button drückt
             $(createForm).submit(function() {
                 event.preventDefault();
+                //Auslösen des create-Ereignisses in socket.io mit den Daten sessionId
                 socket.emit('create', sessionId);
                 console.log(sessionId);
                 document.getElementById("counter").innerHTML = formatTime(counter); 
+                //Anzeige des generierten QR-Codes
                 $('#qr-modal').modal('show');
+                created = true;
             });
 
-            $(joinForm).submit(function() {
-                event.preventDefault();
-                var roomId = $('#text').val();
-                socket.emit('join', roomId);
-                session = roomId;
-                document.getElementById("counter").innerHTML = formatTime(counter); 
-            });
-
+            //Logik wird ausgeführt, wenn Nutzer auf den start session-Button drückt
             $(startForm).submit(function() {
                 event.preventDefault();
                 noSleep.enable();
-                socket.emit('start', session);
+                //Auslösen des start-Ereignisses in socket.io mit den Daten session
+                if(counter == 0) {
+                    socket.emit('start', session);
+                }
+
             });
 
+            //Logik wird ausgeführt, wenn Nutzer auf den leave session-Button drückt
+            //
+            //manuelles Beenden des Timers
             $(leaveForm).submit(function() {
                 event.preventDefault();
-                socket.emit('leave', { id: sessionId, roomId: session})
-                $('ul').empty();
-                clearInterval(myTimer);
-                counter = 0;
-                document.getElementById("counter").innerHTML = formatTime(counter); 
-                $('li').remove();
-                noSleep.disable();
+                tempCounter = counter;
+                if(created) {
+                    $('#clients').empty();
+                    socket.io.disconnect();
+                    socket.io.connect();
+                    firebase.auth().currentUser.getIdToken(true).then(function(idToken) {
+                        var data = {
+                            idToken: idToken
+                        };
+                        //Auslösen des auth-Ereignis mit dem ID-Token
+                        socket.emit('auth', data);
+                    });
+                }
+                //kontrolliert, ob der Timer überhaupt schon gestartet wurde
+                if(tempCounter > 0) {
+                    //aktuelle socket.io-Verbindung wird getrennt
+                    socket.io.disconnect();
+                    //Timer wird gestoppt
+                    clearInterval(myTimer);
+                    counter = 0;
+                    document.getElementById("counter").innerHTML = formatTime(counter); 
+                    $('#clients').empty();
+                    //Wakelock wird entfernt
+                    noSleep.disable();
+                    //neue socket.io-Verbindung wird geöffnet
+                    socket.io.connect();
+                    //Methode zum Posten auf Facebook wird ausgeführt
+                    //
+                    //Nutzer wird gefragt, ob er die aktuelle Zeit des Timers auf Facebook posten möchte
+                    facebookPost(tempCounter-1);
+                }
             });
 
+            //Registriert und horcht auf das roomId-Ereignis
             socket.on('roomId', function(roomId) {
-                //$('#roomText').text(roomId);
-                var qr = new QRious({
-                    element: document.getElementById('roomId'),
-                    value: 'https://shutappsweb.herokuapp.com/home/' + roomId
-                });
+                //Änderung aufgrund des Problems mit Facebook
+                //
+                //Wert dieser Variable ändern, um zu bestimmen, für welche App der QR-Code generiert wird
+                //
+                //Über Heroku: true (Standard)
+                //Über localhost: false (IP-Adresse in Zeile 170 muss ggfs. angepasst werden)
+                //
+                //
+                var heroku = false;
+                
+                //QR-Code für die App über Heroku
+                if(heroku) {
+                    var qr = new QRious({
+                        element: document.getElementById('roomId'),
+                        value: 'https://shutappsweb.herokuapp.com/home/' + roomId
+                    });
+                //QR-Code für die lokal gestartete App
+                } else {
+                    //IP-Adresse ist je nach Computer anzupassen
+                    var ipadress = '192.168.1.13';
+                    var qr = new QRious({
+                        element: document.getElementById('roomId'),
+                        value: 'http://' + ipadress + ':8888/home/' + roomId
+                    });
+                }
                 session = roomId;
-                //$('#roomHint').text("Bitte QR-Code zum Einladen benutzen!");
             });
 
-            socket.on('joinedRoom', function(joinedRoom) {
-                session = joinedRoom;
-                document.getElementById("counter").innerHTML = formatTime(counter); 
-                //$('#joinedRoom').text(socket.io.engine.id + " joined " + joinedRoom); 
-            });
-
+            //Registiert und horcht auf das clients-Ereignis
+            //
+            //dient zur Darstellung der Nutzer in einem Raum
             socket.on('clients', function(data) {
-                /*var seen = [];
-                console.log(data);
-                $('#clients li').each(function(i, li) {
-                    seen.push($(li).text());
-                });
-                data.forEach(function(element) {
-                    if(jQuery.inArray(element, seen) == -1) {
-                        $('#clients').append("<li>" + element + "</li>");
-                    }
-                });*/
                 $('#clients').append("<li><div><img src=" + data.picture + ">" + data.name + "</div></li>");
             });
 
+            //Registiert und horcht auf das startCounter-Ereignis
+            //
+            //der Timer wird gestartet
             socket.on('startCounter', function(data) {
-                if(data === 'startCounter' && !started) {
-                    started = true;
+                //Wakelock wird aktiviert
+                document.getElementById('nosleep').addEventListener('click', function() { noSleep.enable(); console.log("NoSleep"); }, false);
+                document.getElementById('nosleep').click();
+                if(data === 'startCounter') {
+                    //Wert des Timers wird pro Sekunde um 1 erhöht und zeitgleich an den Server gesendet
                     myTimer = setInterval(function() {
                         socket.emit('counter', counter);
                         document.getElementById("counter").innerHTML = formatTime(counter); 
@@ -198,23 +249,16 @@
                 }
             });
 
+            //Registiert und horcht auf das leave-Ereignis   
             socket.on('leave', function(data) {
+                //entfernt den verlassenen Nutzer aus der Liste der Teilnehmer im Raum
                 $('li').filter(function() { 
                     return $.text([this]) === data.clientId; 
                 }).remove();
-                if(counter == 0) {
-                    //$('#notify').append(data.clientId + " has left the session and lasts " + formatTime(0) + "<br>");
-                } else {
-                    //$('#notify').append(data.clientId + " has left the session and lasts " + formatTime(data.counter) + "<br>");
-                }
-                started = false;
-            });
-
-            socket.on('left', function(data) {
-
             });
         }); 
 
+        //Funktion zum Formatieren des Timers in h:m:s
         function formatTime(seconds) {
             var h = Math.floor(seconds / 3600);
             var m = Math.floor(seconds / 60) % 60;
@@ -228,6 +272,7 @@
             return h + ":" + m + ":" + s;
         }
 
+        //Funktion zum Formatieren der verbrachten Zeit für Facebook in m:s
         function formatTimeFB(seconds) {
             var m = Math.floor(seconds / 60) % 60;
             var s = seconds % 60;
@@ -238,6 +283,7 @@
             return m + ":" + s;
         }   
 
+        //Funktion zum Abmelden des eingeloggten Nutzers
         function signOut() {
             firebase.auth().signOut().then(function() {
                 console.log('user has logged out');
@@ -246,26 +292,21 @@
             });
         };
 
+        //Funktion zum Posten auf Facebook
         function postFB(counterParam) {
             var timeFormatFB;
             var formattedCounterFB;
-            /*FB.ui({
-              method: 'feed',
-              link: 'https://developers.facebook.com/docs/',
-              caption: 'An example caption',
-            }, function(response){});*/
             FB.login(function(){
                 FB.getLoginStatus(function(response) {
+                  //Nutzer ist in Facebook eingeloggt
                   if (response.status === 'connected') {
-                    // the user is logged in and has authenticated your
-                    // app, and response.authResponse supplies
-                    // the user's ID, a valid access token, a signed
-                    // request, and the time the access token 
-                    // and signed request each expire
+                    //User-ID des Nutzers
                     var uid = response.authResponse.userID;
+                    //Access-Token des Nutzers für den Zugriff auf die Graph API
                     var accessToken = response.authResponse.accessToken;
                       console.log(accessToken);
 
+                    //Formatierung des Timers für die Dialog-Box  
                     if(counterParam > 59) {
                         timeFormatFB = "Minuten";
                         formattedCounterFB = formatTimeFB(counterParam);
@@ -277,20 +318,53 @@
                         formattedCounterFB = counterParam;
                     }
 
+                    //Nachricht zum Posten
                     var message = "Ich habe " + formattedCounterFB + " " + timeFormatFB + " ohne mein Smartphone ausgehalten!";
+                    //POST-Request an Facebook Graph API zum Veröffentlichen einer Nachricht
                     $.post("https://graph.facebook.com/"+ uid +"/feed?message=" + message + "&access_token=" + accessToken, function(data, status) {
                         console.log("Data: " + data[0] + "\nStatus: " + status);
                     });
+                    //Nutzer hat App nicht autorisiert, um posten zu dürfen
                   } else if (response.status === 'not_authorized') {
-                    // the user is logged in to Facebook, 
-                    // but has not authenticated your app
+                      console.log('not authorized');
+                    //Nutzer ist in Facebook nicht eingeloggt
                   } else {
-                    // the user isn't logged in to Facebook.
+                      console.log('not logged in');
                   }
                 });
             }, {scope: 'publish_actions'});
         }
-            
+        
+        //Funktion zum Erstellen der Dialog-Box und zum Kontrollieren, ob Nutzer über Facebook und nicht mit Firebase eingeloggt ist
+        function facebookPost(counterParam) {
+                var loggedUser = firebase.auth().currentUser.providerData[0].providerId;
+                    //Nutzer ist über Facebook und nicht über Firebase angemeldet
+                    if(loggedUser == "facebook.com") {
+                        if(counterParam != 0) {
+                            if(counterParam > 59) {
+                                timeFormat = "Minuten";
+                                formattedTempCounter = formatTimeFB(counterParam);
+                            } else if(counterParam == 1) {
+                                timeFormat = "Sekunde";
+                                formattedTempCounter = counterParam;
+                            } else {
+                                timeFormat = "Sekunden";
+                                formattedTempCounter = counterParam;
+                            }
+                                
+                            //Dialog-Box
+                            var r = confirm("Sie haben " + formattedTempCounter + " " + timeFormat + " ausgehalten! Wollen Sie das auf Facebook teilen?");  
+                            //Nach Zustimmung des Nutzer wird die neue Nachricht über den Facebook-Account veröffentlicht
+                            if(r) {
+                                postFB(counterParam);
+                            } else {
+                                alert("Sie haben es nicht geteilt!");
+                            }
+                        }
+                    }
+        }
+        
+        //Funktion zur Weiterleitung auf /contacts
         function toContacts() {
             window.location.assign('/contacts');
         }
@@ -306,19 +380,23 @@
 
     <body>
         <div clas="container">
+            <!--title-->
             <h1 class="text-center">ShutAppsWeb</h1>
             <div class="row" style="padding:0 10px;">
                 <div class="col" >
                     </br>
+                    <!--create Button-->
                     <form id="create">
                         <input type="submit" class="btn btn-primary btn-block" value="create session">
                     </form>
                 </div>
                 <div class="col">
                      </br>
+                     <!--time with contacts-Button-->
                      <button id="timeContacts" class="btn btn-block">time with contacts</button>
                 </div>    
             </div>
+            <!--QR-Code-->
             <div class="modal fade" id="qr-modal">
                 <div class="modal-dialog" role="document">
                     <div class="modal-content">
@@ -326,24 +404,22 @@
                     </div>
                 </div>
             </div>
-            <!--<p id="roomText"></p>
-            <form id="join">
-                <input type="text" id="text">
-                <input type="submit" value="join session">
-            </form>
-            <p id="joinedRoom"></p>-->
             </br>
             </br>
+            <button id="nosleep"></button>
+            <!--Timer-->
             <p id="counter" class="display-1 text-center">00:00:00</p>
             </br>
             </br>
             <div class="row" style="padding:0 10px;">
                 <div class="col">
+                    <!--start-Button-->
                     <form id="start">
                         <input id="start" class="btn btn-success btn-block" type="submit" value="start session">
                     </form>
                 </div>
                 <div class="col">
+                    <!--leave-button-->
                     <form id="leave">
                         <input type="submit" class="btn btn-default btn-block" value="leave session">
                     </form>
@@ -352,18 +428,15 @@
             <div>
                 <div class="col-xs-12">
                     </br>
+                    <!--clients in room-->
                     <p class="h4 text-center">Clients in der Session:</p>
                     <ul id="clients" class="h5 text-center"></ul>
-                </div>
-            </div>
-            <div>
-                <div class="col-xs-12">
-                    <p id="notify"></p>
                 </div>
             </div>
             <div class="row" style="padding:0 10px;">
                 <div class="col">
                     </br>
+                    <!--SignOut-Button-->
                     <button id="sign-out" class="btn btn-danger btn-block" name="sign-out">Sign Out</button>
                 </div>
             </div>
