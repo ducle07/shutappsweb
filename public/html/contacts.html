@@ -36,13 +36,13 @@
                     //console.log('user is logged in');
                     //console.log(user.uid);
                     
-                    var heroku = true;
+                    var heroku = false;
                     
                     if(heroku) {
                         var path = "https://shutappsweb.herokuapp.com";
                     } else {
                         //IP-Adresse je nach Computer anpassen
-                        var path = "http://192.168.1.13:8888";
+                        var path = "http://192.168.42.139:8888";
                     }
                     
                     //GET-Request an die Ressource /users/:uid mit der ID des eingeloggten Nutzers
