@@ -10,6 +10,8 @@ Das Ziel meiner Bachelorarbeit ist es, die technischen Möglichkeiten einer mobi
 
 Quellcode: [Client-Hauptseite](https://github.com/ducle07/shutappsweb/blob/master/index.html), [Client-Nebenseiten](https://github.com/ducle07/shutappsweb/tree/master/public/html) & [Server](https://github.com/ducle07/shutappsweb/blob/master/app.js)
 
+Weitere Informationen in der [Bachelorarbeit](https://github.com/ducle07/shutappsweb/blob/master/Bachelorarbeit_DucGiangLe.pdf)
+
 ## Architektur & verwendete Technologien
 ![Architekturdiagramm](https://github.com/ducle07/shutappsweb/blob/master/Architektur.png)
 * Client-Server Architektur nach dem Architekturstil **REST**
